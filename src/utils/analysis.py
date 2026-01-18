@@ -1,10 +1,10 @@
 """
 Analysis utilities for MURA-Finance project.
 """
+
 import pandas as pd
 import numpy as np
 from typing import Dict, Tuple, List
-from collections import Counter
 
 
 def analyze_sentiment_distribution(df: pd.DataFrame, sentiment_col: str) -> Dict:
@@ -28,7 +28,7 @@ def analyze_sentiment_distribution(df: pd.DataFrame, sentiment_col: str) -> Dict
         "counts": counts.to_dict(),
         "percentages": percentages.to_dict(),
         "total": len(df),
-        "unique_values": df[sentiment_col].nunique()
+        "unique_values": df[sentiment_col].nunique(),
     }
 
 
@@ -54,11 +54,13 @@ def analyze_ticker_distribution(df: pd.DataFrame, ticker_col: str = "ticker") ->
         "percentages": percentages.to_dict(),
         "total": len(df),
         "unique_tickers": df[ticker_col].nunique(),
-        "most_common": counts.head(10).to_dict()
+        "most_common": counts.head(10).to_dict(),
     }
 
 
-def analyze_temporal_distribution(df: pd.DataFrame, date_col: str = "published_at") -> Dict:
+def analyze_temporal_distribution(
+    df: pd.DataFrame, date_col: str = "published_at"
+) -> Dict:
     """
     Analyze temporal distribution of data.
 
@@ -74,7 +76,7 @@ def analyze_temporal_distribution(df: pd.DataFrame, date_col: str = "published_a
 
     # Convert to datetime if not already
     df_date = df.copy()
-    df_date[date_col] = pd.to_datetime(df_date[date_col], errors='coerce')
+    df_date[date_col] = pd.to_datetime(df_date[date_col], errors="coerce")
 
     valid_dates = df_date[date_col].dropna()
 
@@ -82,25 +84,23 @@ def analyze_temporal_distribution(df: pd.DataFrame, date_col: str = "published_a
         return {"error": "No valid dates found"}
 
     # Convert Period to string for JSON serialization
-    monthly_counts = df_date.groupby(df_date[date_col].dt.to_period('M')).size()
+    monthly_counts = df_date.groupby(df_date[date_col].dt.to_period("M")).size()
     monthly_counts_dict = {str(k): int(v) for k, v in monthly_counts.items()}
 
     return {
         "date_range": {
             "start": str(valid_dates.min()),
             "end": str(valid_dates.max()),
-            "span_days": (valid_dates.max() - valid_dates.min()).days
+            "span_days": (valid_dates.max() - valid_dates.min()).days,
         },
         "articles_per_day": {
             "mean": float(df_date.groupby(df_date[date_col].dt.date).size().mean()),
             "median": float(df_date.groupby(df_date[date_col].dt.date).size().median()),
             "std": float(df_date.groupby(df_date[date_col].dt.date).size().std()),
             "min": int(df_date.groupby(df_date[date_col].dt.date).size().min()),
-            "max": int(df_date.groupby(df_date[date_col].dt.date).size().max())
+            "max": int(df_date.groupby(df_date[date_col].dt.date).size().max()),
         },
-        "articles_per_month": {
-            "counts": monthly_counts_dict
-        }
+        "articles_per_month": {"counts": monthly_counts_dict},
     }
 
 
@@ -128,7 +128,7 @@ def check_duplicates(df: pd.DataFrame, key_columns: List[str] = None) -> Dict:
         "total_duplicate_rows": int(total_duplicates),
         "duplicate_rows_percentage": round(total_duplicates / len(df) * 100, 2),
         "duplicates_by_key": int(key_duplicates),
-        "unique_rows": int(len(df) - total_duplicates)
+        "unique_rows": int(len(df) - total_duplicates),
     }
 
 
@@ -148,12 +148,12 @@ def analyze_data_quality(df: pd.DataFrame) -> Dict:
         "missing_values": {
             "total": int(df.isnull().sum().sum()),
             "columns_with_missing": df.columns[df.isnull().any()].tolist(),
-            "missing_by_column": df.isnull().sum().to_dict()
+            "missing_by_column": df.isnull().sum().to_dict(),
         },
         "duplicates": check_duplicates(df),
         "data_types": df.dtypes.astype(str).to_dict(),
         "numeric_columns": df.select_dtypes(include=[np.number]).columns.tolist(),
-        "text_columns": df.select_dtypes(include=['object']).columns.tolist()
+        "text_columns": df.select_dtypes(include=["object"]).columns.tolist(),
     }
 
     return quality_report
@@ -162,7 +162,7 @@ def analyze_data_quality(df: pd.DataFrame) -> Dict:
 def map_ground_truth_to_predictions(
     ground_truth: pd.DataFrame,
     predictions: pd.DataFrame,
-    join_columns: List[str] = ["published_at", "ticker", "title"]
+    join_columns: List[str] = ["published_at", "ticker", "title"],
 ) -> Tuple[pd.DataFrame, Dict]:
     """
     Map ground truth to predictions.
@@ -181,11 +181,13 @@ def map_ground_truth_to_predictions(
 
     # Convert dates if needed
     if "published_at" in gt.columns and "published_at" in pred.columns:
-        gt["published_at"] = pd.to_datetime(gt["published_at"], errors='coerce')
-        pred["published_at"] = pd.to_datetime(pred["published_at"], errors='coerce')
+        gt["published_at"] = pd.to_datetime(gt["published_at"], errors="coerce")
+        pred["published_at"] = pd.to_datetime(pred["published_at"], errors="coerce")
 
     # Merge on specified columns
-    available_join_cols = [col for col in join_columns if col in gt.columns and col in pred.columns]
+    available_join_cols = [
+        col for col in join_columns if col in gt.columns and col in pred.columns
+    ]
 
     if not available_join_cols:
         return pd.DataFrame(), {"error": "No common columns found for joining"}
@@ -194,18 +196,18 @@ def map_ground_truth_to_predictions(
         gt,
         pred,
         on=available_join_cols,
-        how='outer',
-        suffixes=('_gt', '_pred'),
-        indicator=True
+        how="outer",
+        suffixes=("_gt", "_pred"),
+        indicator=True,
     )
 
     mapping_stats = {
         "total_ground_truth": len(gt),
         "total_predictions": len(pred),
-        "matched_records": int((merged['_merge'] == 'both').sum()),
-        "ground_truth_only": int((merged['_merge'] == 'left_only').sum()),
-        "predictions_only": int((merged['_merge'] == 'right_only').sum()),
-        "match_rate": round((merged['_merge'] == 'both').sum() / len(gt) * 100, 2)
+        "matched_records": int((merged["_merge"] == "both").sum()),
+        "ground_truth_only": int((merged["_merge"] == "left_only").sum()),
+        "predictions_only": int((merged["_merge"] == "right_only").sum()),
+        "match_rate": round((merged["_merge"] == "both").sum() / len(gt) * 100, 2),
     }
 
     return merged, mapping_stats
@@ -252,7 +254,7 @@ def identify_anomalies(df: pd.DataFrame, numeric_columns: List[str] = None) -> D
             "max": float(col_data.max()),
             "outliers_count": len(outliers),
             "outliers_percentage": round(len(outliers) / len(col_data) * 100, 2),
-            "extreme_values": outliers.head(10).tolist() if len(outliers) > 0 else []
+            "extreme_values": outliers.head(10).tolist() if len(outliers) > 0 else [],
         }
 
     return anomalies
