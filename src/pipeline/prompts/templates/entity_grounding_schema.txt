@@ -1,0 +1,6 @@
+{
+    "entities": ["entity1", "entity2", ...],
+    "primary_entity": "main_entity",
+    "confidence": "high|medium|low",
+    "reasoning": "brief explanation"
+}

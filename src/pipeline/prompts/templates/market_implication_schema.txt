@@ -1,0 +1,4 @@
+{
+    "market_implication": "Bullish"|"Bearish"|"Uncertain",
+    "reasoning": "detailed explanation of how you arrived at this market implication"
+}

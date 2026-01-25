@@ -1,0 +1,5 @@
+{
+    "sentiment": "Positive"|"Negative"|"Neutral",
+    "sentiment_score": -1.0 to 1.0 (optional confidence score),
+    "reasoning": "detailed explanation of how you inferred the sentiment from implicit cues"
+}

@@ -1,0 +1,6 @@
+{
+    "cues": ["cue1", "cue2", ...],
+    "cue_types": ["hedging"|"euphemism"|"indirect_warning"|"mixed_framing"],
+    "has_implicit_language": true|false,
+    "reasoning": "brief explanation"
+}
