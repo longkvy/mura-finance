@@ -1,0 +1,5 @@
+{
+    "aspects": ["aspect1", "aspect2", ...],
+    "primary_aspect": "main_aspect",
+    "reasoning": "brief explanation of why this aspect is relevant"
+}

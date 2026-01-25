@@ -7,12 +7,26 @@ Output: Bullish, Bearish, or Uncertain.
 
 from __future__ import annotations
 
-import json
-import re
-from typing import Any
 
-from .base import BaseHop
+from .base import BaseHop, extract_json_from_response
 from ..context import ReasoningContext
+from ..prompts._loader import build_from_template
+
+
+def _normalize_implication(value: str, sentiment: str | None) -> str:
+    """Map implication string to Bullish/Bearish/Uncertain; fallback to sentiment."""
+    v = (value or "").strip().lower()
+    if "bullish" in v or "bull" in v:
+        return "Bullish"
+    if "bearish" in v or "bear" in v:
+        return "Bearish"
+    if "uncertain" in v or "neutral" in v:
+        return "Uncertain"
+    if sentiment == "Positive":
+        return "Bullish"
+    if sentiment == "Negative":
+        return "Bearish"
+    return "Uncertain"
 
 
 class MarketImplicationHop(BaseHop):
@@ -23,6 +37,8 @@ class MarketImplicationHop(BaseHop):
     - Translates sentiment to market direction
     - Considers entity, aspect, and sentiment together
     - Outputs: Bullish, Bearish, or Uncertain
+
+    Prompt templates: `prompts/templates/market_implication.md` and `*_schema.txt`.
     """
 
     def __init__(self):
@@ -32,76 +48,33 @@ class MarketImplicationHop(BaseHop):
         )
 
     def build_prompt(self, context: ReasoningContext) -> str:
-        """Build prompt for market implication inference."""
-        previous_reasoning = context.get_previous_reasoning()
-
-        prompt = f"""You are analyzing a financial news headline to infer its market implications.
-
-Headline: "{context.text}"
-Previous analysis: {previous_reasoning if previous_reasoning else "None"}
-Sentiment: {context.sentiment if context.sentiment else "Not yet determined"}
-
-Task: Based on the complete analysis (entity, financial aspect, implicit cues, and sentiment), determine the market implication:
-- Bullish: Suggests upward price movement or positive outlook
-- Bearish: Suggests downward price movement or negative outlook
-- Uncertain: Mixed signals, hedging, or unclear implications
-
-Consider:
-- The specific financial aspect (e.g., inflation news may have different implications than earnings)
-- The strength of the sentiment (strong positive vs. weak positive)
-- The presence of hedging or uncertainty cues
-
-Respond in JSON format:
-{{
-    "market_implication": "Bullish"|"Bearish"|"Uncertain",
-    "reasoning": "detailed explanation of how you arrived at this market implication"
-}}"""
-        return prompt
+        """Build prompt for market implication inference from templates."""
+        prev = context.get_previous_reasoning()
+        previous_reasoning = prev if prev else "None"
+        sentiment = context.sentiment if context.sentiment else "Not yet determined"
+        return build_from_template(
+            "market_implication",
+            headline=context.text,
+            previous_reasoning=previous_reasoning,
+            sentiment=sentiment,
+        )
 
     def parse_response(self, response: str, context: ReasoningContext) -> dict:
         """Parse market implication inference response."""
-        try:
-            json_match = re.search(r"\{[^}]+\}", response, re.DOTALL)
-            if json_match:
-                result = json.loads(json_match.group())
-            else:
-                result = json.loads(response)
-
-            implication = result.get("market_implication", "").strip()
-            # Normalize implication
-            implication_lower = implication.lower()
-            if "bullish" in implication_lower or "bull" in implication_lower:
-                implication = "Bullish"
-            elif "bearish" in implication_lower or "bear" in implication_lower:
-                implication = "Bearish"
-            elif "uncertain" in implication_lower or "neutral" in implication_lower:
-                implication = "Uncertain"
-            else:
-                # Fallback based on sentiment
-                if context.sentiment == "Positive":
-                    implication = "Bullish"
-                elif context.sentiment == "Negative":
-                    implication = "Bearish"
-                else:
-                    implication = "Uncertain"
-
+        result = extract_json_from_response(response)
+        if result is not None:
+            implication = _normalize_implication(
+                result.get("market_implication", ""), context.sentiment
+            )
             return {
                 "market_implication": implication,
                 "reasoning": result.get("reasoning", ""),
             }
-        except (json.JSONDecodeError, AttributeError):
-            # Fallback: map sentiment to market implication
-            if context.sentiment == "Positive":
-                implication = "Bullish"
-            elif context.sentiment == "Negative":
-                implication = "Bearish"
-            else:
-                implication = "Uncertain"
-
-            return {
-                "market_implication": implication,
-                "reasoning": "Fallback mapping from sentiment",
-            }
+        implication = _normalize_implication("", context.sentiment)
+        return {
+            "market_implication": implication,
+            "reasoning": "Fallback mapping from sentiment",
+        }
 
     def update_context(
         self, context: ReasoningContext, parsed_result: dict, raw_response: str
@@ -110,14 +83,4 @@ Respond in JSON format:
         context = super().update_context(context, parsed_result, raw_response)
         context.market_implication = parsed_result.get("market_implication")
         context.market_reasoning = parsed_result.get("reasoning")
-        return context
-
-    def execute(
-        self, context: ReasoningContext, llm_client: Any, **kwargs
-    ) -> ReasoningContext:
-        """Execute market implication inference hop."""
-        prompt = self.build_prompt(context)
-        response = llm_client.generate(prompt, **kwargs)
-        parsed = self.parse_response(response, context)
-        context = self.update_context(context, parsed, response)
         return context

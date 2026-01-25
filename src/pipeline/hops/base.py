@@ -6,10 +6,44 @@ Inspired by THOR's modular step-by-step approach.
 
 from __future__ import annotations
 
+import json
 from abc import ABC, abstractmethod
 from typing import Any
 
 from ..context import ReasoningContext
+
+
+def extract_json_from_response(response: str) -> dict | None:
+    """
+    Extract a JSON object from an LLM response string.
+
+    Tries json.loads(response) first, then looks for {...} with
+    brace-matching to support nested objects. Returns None on failure.
+
+    Used by all hops to avoid duplicating JSON extraction logic.
+    """
+    if not response or not isinstance(response, str):
+        return None
+    s = response.strip()
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        pass
+    start = s.find("{")
+    if start == -1:
+        return None
+    depth = 0
+    for i, c in enumerate(s[start:], start):
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(s[start : i + 1])
+                except json.JSONDecodeError:
+                    return None
+    return None
 
 
 class BaseHop(ABC):
@@ -26,22 +60,27 @@ class BaseHop(ABC):
         self.name = name
         self.description = description
 
-    @abstractmethod
     def execute(
         self, context: ReasoningContext, llm_client: Any, **kwargs
     ) -> ReasoningContext:
         """
         Execute this hop's reasoning.
 
+        Default: build_prompt -> LLM generate -> parse_response -> update_context.
+        Override only if a hop needs custom execution flow.
+
         Args:
             context: Current reasoning context (accumulated from previous hops)
             llm_client: LLM client for making API calls
-            **kwargs: Additional parameters
+            **kwargs: Additional parameters (e.g. passed to generate)
 
         Returns:
             Updated context with this hop's results
         """
-        pass
+        prompt = self.build_prompt(context)
+        response = llm_client.generate(prompt, **kwargs)
+        parsed = self.parse_response(response, context)
+        return self.update_context(context, parsed, response)
 
     @abstractmethod
     def build_prompt(self, context: ReasoningContext) -> str:
@@ -60,7 +99,8 @@ class BaseHop(ABC):
         """
         Parse LLM response and extract structured information.
 
-        Override in subclasses for hop-specific parsing.
+        Override in subclasses for hop-specific parsing. Use
+        extract_json_from_response() for JSON extraction.
 
         Args:
             response: Raw LLM response
