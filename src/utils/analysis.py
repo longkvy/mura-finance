@@ -3,7 +3,6 @@ Analysis utilities for MURA-Finance project.
 """
 
 import pandas as pd
-import numpy as np
 from typing import Dict, Tuple, List
 
 
@@ -84,5 +83,3 @@ def map_ground_truth_to_predictions(
     }
 
     return merged, mapping_stats
-
-

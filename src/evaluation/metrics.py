@@ -40,8 +40,10 @@ def _align_valid(
     n = min(len(y_true), len(y_pred))
     y_true, y_pred = y_true[:n], y_pred[:n]
     mask = (
-        np.isfinite(y_true) & np.isin(y_true, labels)
-        & np.isfinite(y_pred) & np.isin(y_pred, labels)
+        np.isfinite(y_true)
+        & np.isin(y_true, labels)
+        & np.isfinite(y_pred)
+        & np.isin(y_pred, labels)
     )
     return y_true[mask].astype(int), y_pred[mask].astype(int)
 
@@ -142,16 +144,19 @@ def mcnemar_test_pair(
     n = min(len(y_true), len(ya), len(yb))
     y_true, ya, yb = y_true[:n], ya[:n], yb[:n]
     valid = (
-        np.isfinite(y_true) & np.isin(np.round(y_true), (-1, 0, 1))
-        & np.isfinite(ya) & np.isin(np.round(ya), (-1, 0, 1))
-        & np.isfinite(yb) & np.isin(np.round(yb), (-1, 0, 1))
+        np.isfinite(y_true)
+        & np.isin(np.round(y_true), (-1, 0, 1))
+        & np.isfinite(ya)
+        & np.isin(np.round(ya), (-1, 0, 1))
+        & np.isfinite(yb)
+        & np.isin(np.round(yb), (-1, 0, 1))
     )
     y_t = y_true[valid]
     ya = np.round(ya[valid]).astype(int)
     yb = np.round(yb[valid]).astype(int)
 
-    correct_a = (ya == y_t)
-    correct_b = (yb == y_t)
+    correct_a = ya == y_t
+    correct_b = yb == y_t
     both_wrong = int(np.sum((~correct_a) & (~correct_b)))
     a_wrong_b_right = int(np.sum((~correct_a) & correct_b))
     a_right_b_wrong = int(np.sum(correct_a & (~correct_b)))
@@ -159,7 +164,12 @@ def mcnemar_test_pair(
     table = [[both_wrong, a_wrong_b_right], [a_right_b_wrong, both_right]]
     b, c = a_wrong_b_right, a_right_b_wrong
     if b + c == 0:
-        return {"statistic": 0.0, "p_value": 1.0, "contingency": table, "interpretation": "No discordant pairs; cannot test."}
+        return {
+            "statistic": 0.0,
+            "p_value": 1.0,
+            "contingency": table,
+            "interpretation": "No discordant pairs; cannot test.",
+        }
     try:
         chi2 = (b - c) ** 2 / (b + c)
         p = float(1 - chi2_dist.cdf(chi2, df=1))

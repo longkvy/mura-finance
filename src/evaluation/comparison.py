@@ -129,7 +129,9 @@ def evaluate_allday_models(
             continue
         s = merged[col]
         if continuous:
-            y_pred = np.array([_continuous_to_discrete(v) for v in s.values], dtype=float)
+            y_pred = np.array(
+                [_continuous_to_discrete(v) for v in s.values], dtype=float
+            )
         else:
             y_pred = np.asarray(s, dtype=float)
             ok = np.isfinite(y_pred) & np.isin(np.round(y_pred), (-1, 0, 1))
@@ -145,7 +147,11 @@ def evaluate_allday_models(
             results[name] = metrics
             continue
         cm = confusion_matrix_dict(y_t, y_p)
-        results[name] = {"metrics": metrics, "confusion_matrix": cm, "n_days": int(len(merged))}
+        results[name] = {
+            "metrics": metrics,
+            "confusion_matrix": cm,
+            "n_days": int(len(merged)),
+        }
     return results
 
 
@@ -234,7 +240,11 @@ def run_error_analysis(
         if pred is None:
             continue
         wrong = (pred != y_true) & np.isfinite(pred) & np.isfinite(y_true)
-        wrong = wrong & np.isin(y_true, (-1, 0, 1)) & np.isin(pred.astype(float), (-1, 0, 1))
+        wrong = (
+            wrong
+            & np.isin(y_true, (-1, 0, 1))
+            & np.isin(pred.astype(float), (-1, 0, 1))
+        )
         error_mask[name] = wrong
     common = np.zeros(n, dtype=bool)
     for m in error_mask.values():
@@ -255,7 +265,9 @@ def run_error_analysis(
     }
 
 
-def _model_pred_column(df: pd.DataFrame, name: str) -> Tuple[bool, Optional[np.ndarray]]:
+def _model_pred_column(
+    df: pd.DataFrame, name: str
+) -> Tuple[bool, Optional[np.ndarray]]:
     for mn, col, cont in SINGLE_ARTICLE_MODELS:
         if mn != name:
             continue
@@ -297,10 +309,23 @@ def build_model_comparison_report(
         pairs = [("finbert", "gpt_p1"), ("gpt_p1", "gpt_p7"), ("finbert_a", "gpt_p1n")]
         mcnemar = {}
         for a, b in pairs:
-            if a not in single or b not in single or "metrics" not in single[a] or "metrics" not in single[b]:
+            if (
+                a not in single
+                or b not in single
+                or "metrics" not in single[a]
+                or "metrics" not in single[b]
+            ):
                 continue
-            pa = _get_single_article_pred(sa, next(c for n, c, _ in SINGLE_ARTICLE_MODELS if n == a), next(cont for n, _, cont in SINGLE_ARTICLE_MODELS if n == a))
-            pb = _get_single_article_pred(sa, next(c for n, c, _ in SINGLE_ARTICLE_MODELS if n == b), next(cont for n, _, cont in SINGLE_ARTICLE_MODELS if n == b))
+            pa = _get_single_article_pred(
+                sa,
+                next(c for n, c, _ in SINGLE_ARTICLE_MODELS if n == a),
+                next(cont for n, _, cont in SINGLE_ARTICLE_MODELS if n == a),
+            )
+            pb = _get_single_article_pred(
+                sa,
+                next(c for n, c, _ in SINGLE_ARTICLE_MODELS if n == b),
+                next(cont for n, _, cont in SINGLE_ARTICLE_MODELS if n == b),
+            )
             mcnemar[f"{a}_vs_{b}"] = mcnemar_test_pair(y, pa, pb)
         report["statistical_tests"] = {"mcnemar": mcnemar}
 
