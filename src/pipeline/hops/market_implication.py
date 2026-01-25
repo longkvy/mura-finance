@@ -18,23 +18,23 @@ from ..context import ReasoningContext
 class MarketImplicationHop(BaseHop):
     """
     Fifth hop: Infer market implications.
-    
+
     Finance-specific final step:
     - Translates sentiment to market direction
     - Considers entity, aspect, and sentiment together
     - Outputs: Bullish, Bearish, or Uncertain
     """
-    
+
     def __init__(self):
         super().__init__(
             name="market_implication",
-            description="Infer market implications (Bullish/Bearish/Uncertain)"
+            description="Infer market implications (Bullish/Bearish/Uncertain)",
         )
-    
+
     def build_prompt(self, context: ReasoningContext) -> str:
         """Build prompt for market implication inference."""
         previous_reasoning = context.get_previous_reasoning()
-        
+
         prompt = f"""You are analyzing a financial news headline to infer its market implications.
 
 Headline: "{context.text}"
@@ -57,16 +57,16 @@ Respond in JSON format:
     "reasoning": "detailed explanation of how you arrived at this market implication"
 }}"""
         return prompt
-    
+
     def parse_response(self, response: str, context: ReasoningContext) -> dict:
         """Parse market implication inference response."""
         try:
-            json_match = re.search(r'\{[^}]+\}', response, re.DOTALL)
+            json_match = re.search(r"\{[^}]+\}", response, re.DOTALL)
             if json_match:
                 result = json.loads(json_match.group())
             else:
                 result = json.loads(response)
-            
+
             implication = result.get("market_implication", "").strip()
             # Normalize implication
             implication_lower = implication.lower()
@@ -84,7 +84,7 @@ Respond in JSON format:
                     implication = "Bearish"
                 else:
                     implication = "Uncertain"
-            
+
             return {
                 "market_implication": implication,
                 "reasoning": result.get("reasoning", ""),
@@ -97,29 +97,23 @@ Respond in JSON format:
                 implication = "Bearish"
             else:
                 implication = "Uncertain"
-            
+
             return {
                 "market_implication": implication,
                 "reasoning": "Fallback mapping from sentiment",
             }
-    
+
     def update_context(
-        self,
-        context: ReasoningContext,
-        parsed_result: dict,
-        raw_response: str
+        self, context: ReasoningContext, parsed_result: dict, raw_response: str
     ) -> ReasoningContext:
         """Update context with market implication results."""
         context = super().update_context(context, parsed_result, raw_response)
         context.market_implication = parsed_result.get("market_implication")
         context.market_reasoning = parsed_result.get("reasoning")
         return context
-    
+
     def execute(
-        self,
-        context: ReasoningContext,
-        llm_client: Any,
-        **kwargs
+        self, context: ReasoningContext, llm_client: Any, **kwargs
     ) -> ReasoningContext:
         """Execute market implication inference hop."""
         prompt = self.build_prompt(context)
