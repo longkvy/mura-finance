@@ -160,3 +160,12 @@ cython_debug/
 #.idea/
 notes
 data
+
+# macOS
+.DS_Store
+
+# Large data / artifacts
+*.parquet
+allfiles.txt
+mura/
+
