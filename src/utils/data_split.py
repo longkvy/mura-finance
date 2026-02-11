@@ -24,7 +24,6 @@ df = pd.read_csv(INPUT_FILE)
 # Parse date
 df[DATE_COL] = pd.to_datetime(df[DATE_COL])
 
-# Ensure we only use 2023 data (optional but recommended)
 df = df[df[DATE_COL].dt.year == 2023].reset_index(drop=True)
 
 # ======================
