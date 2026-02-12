@@ -6,16 +6,9 @@ matplotlib>=3.7.0
 seaborn>=0.12.0
 jupyter>=1.0.0
 ipykernel>=6.0.0
-openai
 
-# Optional: for local/offline Hugging Face models (google/flan-t5-xl, meta-llama/Meta-Llama-3-8B)
-# pip install transformers torch
-transformers>=4.30.0
-torch>=2.0.0
-
-# Optional: for local GGUF models via llama.cpp (e.g. Mistral 7B Q4)
-# pip install llama-cpp-python
-llama-cpp-python
-
-# Optional: load environment variables from a .env file
+# Load environment variables from a .env file
 python-dotenv>=1.0.0
+
+# HTTP client for Ollama backend
+requests>=2.31.0
