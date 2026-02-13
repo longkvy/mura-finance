@@ -42,11 +42,10 @@ class ImplicitCueHop(BaseHop):
         "weakness",
     ]
 
-    def __init__(self, max_tokens: int = 64):
+    def __init__(self):
         super().__init__(
             name="implicit_cue",
             description="Detect implicit linguistic cues (hedging, euphemisms)",
-            max_tokens=max_tokens,
         )
 
     def build_prompt(self, context: ReasoningContext) -> str:

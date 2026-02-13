@@ -41,11 +41,10 @@ class MarketImplicationHop(BaseHop):
     Prompt templates: `prompts/templates/market_implication.md` and `*_schema.txt`.
     """
 
-    def __init__(self, max_tokens: int = 48):
+    def __init__(self):
         super().__init__(
             name="market_implication",
             description="Infer market implications (Bullish/Bearish/Uncertain)",
-            max_tokens=max_tokens,
         )
 
     def build_prompt(self, context: ReasoningContext) -> str:

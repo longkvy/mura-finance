@@ -42,11 +42,10 @@ class SentimentInferenceHop(BaseHop):
     Prompt templates: `prompts/templates/sentiment_inference.md` and `*_schema.txt`.
     """
 
-    def __init__(self, max_tokens: int = 48):
+    def __init__(self):
         super().__init__(
             name="sentiment_inference",
             description="Infer implicit sentiment (Positive/Negative/Neutral)",
-            max_tokens=max_tokens,
         )
 
     def build_prompt(self, context: ReasoningContext) -> str:

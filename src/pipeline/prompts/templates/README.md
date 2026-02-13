@@ -29,7 +29,7 @@
 
 ## Speed (Colab / API)
 
-Templates and schemas are kept **short** to reduce latency: fewer input tokens and smaller outputs. Each hop uses a default `max_tokens` (64 for hops 1–3, 48 for 4–5); override in the hop’s `__init__(max_tokens=…)` if needed.
+Templates and schemas are kept **short** to reduce latency. Use `LLMClient(max_tokens=…)` to control output length for all hops (e.g. `LLMClient(max_tokens=256, model="...")`).
 
 ## After editing
 

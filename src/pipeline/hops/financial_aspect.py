@@ -46,11 +46,10 @@ class FinancialAspectHop(BaseHop):
         "commodity_prices",
     ]
 
-    def __init__(self, max_tokens: int = 64):
+    def __init__(self):
         super().__init__(
             name="financial_aspect",
             description="Identify key financial aspects/economic drivers",
-            max_tokens=max_tokens,
         )
 
     def build_prompt(self, context: ReasoningContext) -> str:

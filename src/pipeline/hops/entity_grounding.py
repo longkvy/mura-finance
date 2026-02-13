@@ -27,11 +27,10 @@ class EntityGroundingHop(BaseHop):
     Prompt templates: `prompts/templates/entity_grounding.md` and `*_schema.txt`.
     """
 
-    def __init__(self, max_tokens: int = 64):
+    def __init__(self):
         super().__init__(
             name="entity_grounding",
             description="Identify financial entities (tickers, currencies, assets)",
-            max_tokens=max_tokens,
         )
 
     def build_prompt(self, context: ReasoningContext) -> str:
