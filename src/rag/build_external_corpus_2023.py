@@ -10,6 +10,7 @@ from datasets import load_dataset
 DATASET = "Brianferrell787/financial-news-multisource"
 OUT_PATH = "financial_news_2023.parquet"
 
+
 def is_2023(date_str: str) -> bool:
     try:
         dt = datetime.fromisoformat(date_str)
@@ -32,17 +33,12 @@ def main():
 
     for item in ds:
         date = item.get("date")
-        
+
         if not date:
             continue
 
         if is_2023(date):
-            rows.append(
-                {
-                    "date": date,
-                    "text": item.get("text")
-                }
-            )
+            rows.append({"date": date, "text": item.get("text")})
             kept += 1
 
             print(kept)

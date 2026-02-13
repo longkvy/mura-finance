@@ -5,7 +5,7 @@ from pathlib import Path
 # ======================
 # CONFIG
 # ======================
-INPUT_FILE = "../../sentiment_annotated_with_texts_add_context.csv"       
+INPUT_FILE = "../../sentiment_annotated_with_texts_add_context.csv"
 OUTPUT_DIR = "../../data"
 DEV_FILE = "dev.csv"
 TEST_FILE = "test.csv"
@@ -45,10 +45,7 @@ for (month, sentiment), group in df.groupby(["month", LABEL_COL]):
         continue
 
     dev, test = train_test_split(
-        group,
-        test_size=TEST_RATIO,
-        random_state=RANDOM_STATE,
-        shuffle=True
+        group, test_size=TEST_RATIO, random_state=RANDOM_STATE, shuffle=True
     )
 
     dev_parts.append(dev)

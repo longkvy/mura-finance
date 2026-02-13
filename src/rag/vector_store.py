@@ -2,20 +2,14 @@ import chromadb
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
-import math
 
 
 class ChromaVectorStore:
     COLLECTION_NAME = "external_corpus"
 
     def __init__(self, model_name: str):
-        self.client = chromadb.Client(
-            Settings(anonymized_telemetry=False)
-        )
-        self.model = SentenceTransformer(
-            model_name,
-            device="cuda"
-        )
+        self.client = chromadb.Client(Settings(anonymized_telemetry=False))
+        self.model = SentenceTransformer(model_name, device="cuda")
         self.collection = self.client.get_or_create_collection(
             name=self.COLLECTION_NAME,
             embedding_function=None,
@@ -34,10 +28,7 @@ class ChromaVectorStore:
             print("⚠️ Collection already populated. Skipping build.")
             return
 
-        for i in tqdm(
-            range(0, len(texts), batch_size),
-            desc="Adding to Chroma"
-        ):
+        for i in tqdm(range(0, len(texts), batch_size), desc="Adding to Chroma"):
             batch_texts = texts[i : i + batch_size]
             batch_metas = metadatas[i : i + batch_size]
             batch_ids = [str(j) for j in range(i, i + len(batch_texts))]
@@ -61,4 +52,3 @@ class ChromaVectorStore:
             where={"date": date},
         )
         return results["documents"][0]
-

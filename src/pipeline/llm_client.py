@@ -1,135 +1,207 @@
 """
-LLM client for making API calls to OpenAI or other providers.
+Minimal LLM client that talks only to a local Ollama server.
 
-Handles error handling, retries, and token tracking.
+Designed to be simple and fast: one backend (Ollama), one client (LLMClient).
 """
 
 from __future__ import annotations
 
-import time
-from typing import Dict, Optional
 import os
+import time
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
+
+# Load environment variables from a local .env file (if present)
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    # python-dotenv is optional; if it's not installed we just rely on the process env.
+    pass
 
 try:
-    import openai
-    from openai import OpenAI
+    import requests
 except ImportError:
-    openai = None
-    OpenAI = None
+    requests = None  # type: ignore
 
 
-class LLMClient:
+class BaseLLMBackend(ABC):
+    """Abstract base for LLM backends."""
+
+    @abstractmethod
+    def generate(
+        self, prompt: str, system_prompt: Optional[str] = None, **kwargs: Any
+    ) -> str:
+        """Generate a response. Returns the generated text."""
+        ...
+
+    def get_usage_stats(self) -> Dict[str, int]:
+        """Return token/call usage. Override if the backend tracks usage."""
+        return {
+            "total_calls": 0,
+            "total_prompt_tokens": 0,
+            "total_completion_tokens": 0,
+            "total_tokens": 0,
+        }
+
+    def reset_usage_stats(self) -> None:
+        """Reset usage counters. Override if the backend tracks usage."""
+        pass
+
+
+class OllamaBackend(BaseLLMBackend):
     """
-    Client for interacting with LLM APIs.
+    Talk to an Ollama server (e.g. `ollama serve`) via its HTTP API.
 
-    Supports OpenAI API with error handling and retries.
+    Assumes a running Ollama instance (default: http://localhost:11434).
+    Uses the `/api/generate` endpoint with `stream=False`.
     """
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        model: Optional[str] = None,
+        model: str,
+        host: Optional[str] = None,
         max_retries: int = 3,
         retry_delay: float = 1.0,
         temperature: float = 0.0,
+        max_tokens: int = 128,
+        top_p: float = 1.0,
+    ):
+        if requests is None:
+            raise ImportError(
+                "requests is required for OllamaBackend. "
+                "Install with: pip install requests"
+            )
+
+        self.model = model
+        self.host = host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.top_p = top_p
+        self.total_calls = 0
+
+    def generate(
+        self, prompt: str, system_prompt: Optional[str] = None, **kwargs: Any
+    ) -> str:
+        if system_prompt:
+            prompt = f"[System]\n{system_prompt}\n\n[User]\n{prompt}"
+
+        max_tokens = kwargs.get("max_tokens", self.max_tokens)
+        temperature = kwargs.get("temperature", self.temperature)
+        top_p = kwargs.get("top_p", self.top_p)
+
+        url = self.host.rstrip("/") + "/api/generate"
+        payload: Dict[str, Any] = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "num_predict": max_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+            },
+        }
+
+        last_error: Optional[Exception] = None
+        for attempt in range(self.max_retries):
+            try:
+                r = requests.post(url, json=payload, timeout=600)
+                r.raise_for_status()
+                self.total_calls += 1
+                data = r.json()
+                if isinstance(data, dict):
+                    return (data.get("response") or "").strip()
+                return str(data).strip()
+            except Exception as e:
+                last_error = e
+                if attempt < self.max_retries - 1:
+                    time.sleep(self.retry_delay * (attempt + 1))
+                else:
+                    raise RuntimeError(
+                        f"Ollama failed after {self.max_retries} attempts: {last_error}"
+                    ) from e
+        raise RuntimeError(f"Unexpected error: {last_error}")
+
+    def get_usage_stats(self) -> Dict[str, int]:
+        return {
+            "total_calls": self.total_calls,
+            "total_prompt_tokens": 0,
+            "total_completion_tokens": 0,
+            "total_tokens": 0,
+        }
+
+    def reset_usage_stats(self) -> None:
+        self.total_calls = 0
+
+
+Provider = str  # Only "ollama" is supported.
+
+DEFAULT_OLLAMA_MODEL = "llama2:7b"
+
+
+class LLMClient:
+    """
+    Minimal client for interacting with a local Ollama server.
+
+    - provider="ollama" (only option): talks to Ollama over HTTP.
+      Uses OLLAMA_MODEL (default: llama3) and optional OLLAMA_HOST.
+    """
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,  # Kept for backward compatibility; ignored.
+        model: Optional[str] = None,
+        provider: Provider = "ollama",
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
+        temperature: float = 0.0,
+        max_tokens: int = 16,
+        top_p: float = 1.0,
     ):
         """
         Initialize LLM client.
 
         Args:
-            api_key: OpenAI API key (or set OPENAI_API_KEY env var)
-            model: Model name (or set OPENAI_MODEL env var; default: gpt-3.5-turbo)
-            max_retries: Maximum number of retry attempts
-            retry_delay: Delay between retries (seconds)
-            temperature: Sampling temperature (0.0 for deterministic)
+            api_key: Ignored for Ollama; kept for compatibility.
+            model: Ollama model name (e.g. "mistral", "llama3"). If None, uses OLLAMA_MODEL or "llama3".
+            provider: Must be "ollama" (other values are not supported).
+            max_retries: Maximum number of retry attempts.
+            retry_delay: Delay between retries (seconds).
+            temperature: Sampling temperature (0.0 for deterministic).
+            max_tokens: Default max tokens to generate.
+            top_p: Nucleus sampling (1.0 = no sampling).
         """
-        if OpenAI is None:
-            raise ImportError(
-                "openai package is required. Install with: pip install openai"
-            )
-
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
+        self.provider = provider.lower()
+        if self.provider != "ollama":
             raise ValueError(
-                "OpenAI API key required. Set OPENAI_API_KEY env var or pass api_key parameter."
+                f"Only 'ollama' provider is supported now; got '{provider}'."
             )
 
-        self.client = OpenAI(api_key=self.api_key)
-        self.model = model or os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
-        self.max_retries = max_retries
-        self.retry_delay = retry_delay
-        self.temperature = temperature
+        if model is None:
+            model = os.getenv("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL)
 
-        # Token tracking
-        self.total_prompt_tokens = 0
-        self.total_completion_tokens = 0
-        self.total_calls = 0
+        self._backend: BaseLLMBackend = OllamaBackend(
+            model=model,
+            max_retries=max_retries,
+            retry_delay=retry_delay,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=top_p,
+        )
 
     def generate(
-        self, prompt: str, system_prompt: Optional[str] = None, **kwargs
+        self, prompt: str, system_prompt: Optional[str] = None, **kwargs: Any
     ) -> str:
-        """
-        Generate response from LLM.
-
-        Args:
-            prompt: User prompt
-            system_prompt: Optional system prompt
-            **kwargs: Additional parameters (temperature, max_tokens, etc.)
-
-        Returns:
-            Generated text response
-        """
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-
-        # Merge kwargs with defaults
-        params = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": kwargs.get("temperature", self.temperature),
-        }
-        if "max_tokens" in kwargs:
-            params["max_tokens"] = kwargs["max_tokens"]
-
-        # Retry logic
-        last_error = None
-        for attempt in range(self.max_retries):
-            try:
-                response = self.client.chat.completions.create(**params)
-
-                # Track tokens
-                usage = response.usage
-                if usage:
-                    self.total_prompt_tokens += usage.prompt_tokens
-                    self.total_completion_tokens += usage.completion_tokens
-                self.total_calls += 1
-
-                return response.choices[0].message.content
-
-            except Exception as e:
-                last_error = e
-                if attempt < self.max_retries - 1:
-                    time.sleep(self.retry_delay * (attempt + 1))  # Exponential backoff
-                else:
-                    raise RuntimeError(
-                        f"Failed after {self.max_retries} attempts: {last_error}"
-                    )
-
-        raise RuntimeError(f"Unexpected error: {last_error}")
+        """Generate response from the configured LLM."""
+        return self._backend.generate(prompt, system_prompt=system_prompt, **kwargs)
 
     def get_usage_stats(self) -> Dict[str, int]:
-        """Get token usage statistics."""
-        return {
-            "total_calls": self.total_calls,
-            "total_prompt_tokens": self.total_prompt_tokens,
-            "total_completion_tokens": self.total_completion_tokens,
-            "total_tokens": self.total_prompt_tokens + self.total_completion_tokens,
-        }
+        """Get usage statistics."""
+        return self._backend.get_usage_stats()
 
-    def reset_usage_stats(self):
+    def reset_usage_stats(self) -> None:
         """Reset usage statistics."""
-        self.total_prompt_tokens = 0
-        self.total_completion_tokens = 0
-        self.total_calls = 0
+        self._backend.reset_usage_stats()
