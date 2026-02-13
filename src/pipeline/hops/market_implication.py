@@ -41,22 +41,27 @@ class MarketImplicationHop(BaseHop):
     Prompt templates: `prompts/templates/market_implication.md` and `*_schema.txt`.
     """
 
-    def __init__(self):
+    def __init__(self, max_tokens: int = 48):
         super().__init__(
             name="market_implication",
             description="Infer market implications (Bullish/Bearish/Uncertain)",
+            max_tokens=max_tokens,
         )
 
     def build_prompt(self, context: ReasoningContext) -> str:
-        """Build prompt for market implication inference from templates."""
+        """Build prompt for market implication inference."""
         prev = context.get_previous_reasoning()
         previous_reasoning = prev if prev else "None"
         sentiment = context.sentiment if context.sentiment else "Not yet determined"
+        ticker = context.ticker if context.ticker else "the given FX pair"
+        ticker_suffix = f" holding {context.ticker}" if context.ticker else ""
         return build_from_template(
             "market_implication",
             headline=context.text,
             previous_reasoning=previous_reasoning,
             sentiment=sentiment,
+            ticker=ticker,
+            ticker_suffix=ticker_suffix,
         )
 
     def parse_response(self, response: str, context: ReasoningContext) -> dict:

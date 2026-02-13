@@ -12,7 +12,9 @@ The **LLM prompt text** for each hop lives in **plain markdown (`.md`) and text 
 | 4. Sentiment Inference | `templates/sentiment_inference.md` | `templates/sentiment_inference_schema.txt` |
 | 5. Market Implication | `templates/market_implication.md` | `templates/market_implication_schema.txt` |
 
-See **`templates/README.md`** for placeholder names (`{headline}`, `{previous_reasoning}`, etc.) and rules.
+See **`templates/README.md`** for placeholder names (`{headline}`, `{previous_reasoning}`, `{ticker}`, etc.) and rules.
+
+**Hops 4 & 5** (Sentiment Inference, Market Implication) use role and task wording inspired by [Financial-Sentiment-Analysis-with-ChatGPT](https://github.com/giorgosfatouros/Financial-Sentiment-Analysis-with-ChatGPT) (GPT-P2 / GPT-P4): “Act as an expert at forex trading [holding {ticker}]”, ticker-specific classification, and buy/sell/hold framing.
 
 ## Python side
 

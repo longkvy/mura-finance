@@ -54,11 +54,17 @@ class BaseHop(ABC):
     1. Takes context from previous hops
     2. Performs its specific reasoning task
     3. Updates the context with its results
+
+    Set max_tokens on the subclass to limit output length (faster on Colab/API).
     """
 
-    def __init__(self, name: str, description: str):
+    max_tokens: int | None = None  # override in subclass to cap output tokens
+
+    def __init__(self, name: str, description: str, max_tokens: int | None = None):
         self.name = name
         self.description = description
+        if max_tokens is not None:
+            self.max_tokens = max_tokens
 
     def execute(
         self, context: ReasoningContext, llm_client: Any, **kwargs
@@ -78,7 +84,10 @@ class BaseHop(ABC):
             Updated context with this hop's results
         """
         prompt = self.build_prompt(context)
-        response = llm_client.generate(prompt, **kwargs)
+        gen_kwargs = dict(kwargs)
+        if getattr(self, "max_tokens", None) is not None:
+            gen_kwargs["max_tokens"] = self.max_tokens
+        response = llm_client.generate(prompt, **gen_kwargs)
         parsed = self.parse_response(response, context)
         return self.update_context(context, parsed, response)
 

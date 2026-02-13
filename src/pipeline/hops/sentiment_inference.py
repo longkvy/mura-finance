@@ -42,20 +42,25 @@ class SentimentInferenceHop(BaseHop):
     Prompt templates: `prompts/templates/sentiment_inference.md` and `*_schema.txt`.
     """
 
-    def __init__(self):
+    def __init__(self, max_tokens: int = 48):
         super().__init__(
             name="sentiment_inference",
             description="Infer implicit sentiment (Positive/Negative/Neutral)",
+            max_tokens=max_tokens,
         )
 
     def build_prompt(self, context: ReasoningContext) -> str:
         """Build prompt for sentiment inference from templates."""
         prev = context.get_previous_reasoning()
         previous_reasoning = prev if prev else "None"
+        ticker = context.ticker if context.ticker else "the given FX pair"
+        ticker_suffix = f" holding {context.ticker}" if context.ticker else ""
         return build_from_template(
             "sentiment_inference",
             headline=context.text,
             previous_reasoning=previous_reasoning,
+            ticker=ticker,
+            ticker_suffix=ticker_suffix,
         )
 
     def parse_response(self, response: str, context: ReasoningContext) -> dict:
