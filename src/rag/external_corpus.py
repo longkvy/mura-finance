@@ -43,8 +43,10 @@ class ExternalCorpus:
 
             if isinstance(text, str) and isinstance(date, str):
                 texts.append(text)
-                metadatas.append({
-                    "date": date[:10]  # YYYY-MM-DD
-                })
+                metadatas.append(
+                    {
+                        "date": date[:10]  # YYYY-MM-DD
+                    }
+                )
 
         return texts, metadatas

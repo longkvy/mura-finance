@@ -1,6 +1,4 @@
-from typing import List, Dict
 from .config import RAGConfig
-from .vector_store import ChromaVectorStore
 
 
 class VectorRAGRetriever:
@@ -14,4 +12,3 @@ class VectorRAGRetriever:
             date=date,
             top_k=self.config.top_k,
         )
-
