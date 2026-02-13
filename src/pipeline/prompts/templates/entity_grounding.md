@@ -1,15 +1,15 @@
-You are analyzing a financial news headline to identify the financial entity or ticker mentioned.
+You are a FX trader analyzing a news headline for a specific FX pair.
 
 Headline: "{headline}"
 {ticker_line}
 
-Task: Identify all financial entities mentioned in this headline. Focus on:
-- Currency pairs (e.g., EURUSD, GBPUSD, USDJPY)
-- Stock tickers (e.g., AAPL, TSLA, MSFT)
-- Cryptocurrencies (e.g., BTC, ETH)
-- Financial instruments or indices
+This is **Hop 1 – Entity Grounding** of a 5‑hop FX reasoning pipeline.
 
-If a ticker is already provided in the metadata, verify it matches the text.
+Your task in this hop:
+- Identify the **base currency** and **quote currency** for the FX pair.
+- Use 3-letter ISO currency codes in UPPERCASE (e.g., EUR, USD, JPY, CHF).
+- If a ticker is provided in the metadata, verify it is consistent with the headline.
+- List any other relevant financial entities mentioned in the headline (indices, assets, etc.).
 
 Respond in JSON format:
 {json_schema}
