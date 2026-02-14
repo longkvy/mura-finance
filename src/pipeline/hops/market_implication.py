@@ -48,15 +48,19 @@ class MarketImplicationHop(BaseHop):
         )
 
     def build_prompt(self, context: ReasoningContext) -> str:
-        """Build prompt for market implication inference from templates."""
+        """Build prompt for market implication inference."""
         prev = context.get_previous_reasoning()
         previous_reasoning = prev if prev else "None"
         sentiment = context.sentiment if context.sentiment else "Not yet determined"
+        ticker = context.ticker if context.ticker else "the given FX pair"
+        ticker_suffix = f" holding {context.ticker}" if context.ticker else ""
         return build_from_template(
             "market_implication",
             headline=context.text,
             previous_reasoning=previous_reasoning,
             sentiment=sentiment,
+            ticker=ticker,
+            ticker_suffix=ticker_suffix,
         )
 
     def parse_response(self, response: str, context: ReasoningContext) -> dict:

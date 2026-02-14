@@ -52,10 +52,14 @@ class SentimentInferenceHop(BaseHop):
         """Build prompt for sentiment inference from templates."""
         prev = context.get_previous_reasoning()
         previous_reasoning = prev if prev else "None"
+        ticker = context.ticker if context.ticker else "the given FX pair"
+        ticker_suffix = f" holding {context.ticker}" if context.ticker else ""
         return build_from_template(
             "sentiment_inference",
             headline=context.text,
             previous_reasoning=previous_reasoning,
+            ticker=ticker,
+            ticker_suffix=ticker_suffix,
         )
 
     def parse_response(self, response: str, context: ReasoningContext) -> dict:

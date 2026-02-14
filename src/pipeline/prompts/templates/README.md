@@ -11,6 +11,8 @@
 |-------------|---------|---------|
 | `{headline}` | All | The financial news headline |
 | `{ticker_line}` | entity_grounding | Optional line e.g. "Provided ticker (metadata): EURUSD", or empty |
+| `{ticker}` | sentiment_inference, market_implication | FX pair / ticker (e.g. EURCHF) or "the given FX pair" |
+| `{ticker_suffix}` | sentiment_inference, market_implication | " holding {ticker}" when ticker is set, else "" |
 | `{previous_reasoning}` | financial_aspect, implicit_cue, sentiment_inference, market_implication | Prior hops’ analysis, or "None" |
 | `{sentiment}` | market_implication | Sentiment from Hop 4, or "Not yet determined" |
 | `{json_schema}` | All | Injected from the `*_schema.txt` file; don’t add this yourself |
@@ -24,6 +26,10 @@
 | 3. Implicit Cue | `implicit_cue.md` | `implicit_cue_schema.txt` |
 | 4. Sentiment Inference | `sentiment_inference.md` | `sentiment_inference_schema.txt` |
 | 5. Market Implication | `market_implication.md` | `market_implication_schema.txt` |
+
+## Speed (Colab / API)
+
+Templates and schemas are kept **short** to reduce latency. Use `LLMClient(max_tokens=…)` to control output length for all hops (e.g. `LLMClient(max_tokens=256, model="...")`).
 
 ## After editing
 

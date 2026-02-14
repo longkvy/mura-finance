@@ -54,6 +54,7 @@ class BaseHop(ABC):
     1. Takes context from previous hops
     2. Performs its specific reasoning task
     3. Updates the context with its results
+
     """
 
     def __init__(self, name: str, description: str):
@@ -72,7 +73,9 @@ class BaseHop(ABC):
         Args:
             context: Current reasoning context (accumulated from previous hops)
             llm_client: LLM client for making API calls
-            **kwargs: Additional parameters (e.g. passed to generate)
+            **kwargs: Additional parameters (e.g. passed to generate). LLMClient's
+                max_tokens (e.g. LLMClient(max_tokens=256)) applies to all hops
+                unless overridden here via kwargs.
 
         Returns:
             Updated context with this hop's results
