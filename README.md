@@ -3,43 +3,23 @@
 
 MURA-Finance is a research project that adapts **multi-hop Chain-of-Thought (CoT) reasoning** to the financial domain, where sentiment is often **implicit, hedged, and context-dependent**.
 
-The project extends the THOR (Three-hop Reasoning) framework to finance by introducing a **5-hop reasoning pipeline** and an optional **Retrieval-Augmented Generation (RAG)** layer to infer:
-- implicit financial sentiment, and
-- market implications (bullish / bearish / uncertain)
-from short financial news headlines.
+The primary objective of this project is to introduce a multi-hop domain-specific pipeline designed to navigate the linguistic complexities of financial markets. In addition, we incorporate Retrieval-Augmented Generation (RAG) to supply relevant contextual information, enabling more informed reasoning and translating inferred sentiment into actionable market signals.
 
 This repository contains the code, data processing scripts, and experiments for a **capstone research project**.
 
 ---
 
-## Core Idea
+## Core Pipeline
 
-Financial language rarely expresses sentiment explicitly.
-Instead, meaning is conveyed through:
-- hedging (“may”, “remains cautious”),
-- euphemisms (“challenging environment”),
-- indirect warnings (“headwinds persist”).
+<img width="1519" height="801" alt="Screenshot 2026-02-14 at 17 48 32" src="https://github.com/user-attachments/assets/2367b453-2191-41f6-9500-6b50c0273a9b" />
 
-MURA-Finance models this behavior explicitly using structured reasoning steps rather than single-step classification.
 
 ---
 
 ## 5-Hop Reasoning Framework
 
-1. **Entity Grounding**
-   Identify the financial entity or ticker (e.g., EURUSD, BTC, AAPL).
+<img width="643" height="738" alt="Screenshot 2026-02-14 at 17 50 05" src="https://github.com/user-attachments/assets/21016496-0282-4761-abc2-cb43e2838dbe" />
 
-2. **Financial Aspect Identification**
-   Determine the key economic driver (e.g., inflation, rates, growth, risk).
-
-3. **Implicit Cue Detection**
-   Detect indirect linguistic signals such as hedging, euphemisms, or mixed framing.
-
-4. **Implicit Sentiment Inference**
-   Classify implicit sentiment: Positive / Negative / Neutral.
-
-5. **Market Implication Inference**
-   Translate sentiment into Bullish / Bearish / Uncertain signals.
 
 An optional **RAG layer** augments short headlines with relevant contextual information.
 
@@ -49,12 +29,6 @@ An optional **RAG layer** augments short headlines with relevant contextual info
 
 - **Forex Financial News Headline Dataset**
   https://arxiv.org/abs/2308.07935
-
-- **Financial PhraseBank**
-  https://huggingface.co/datasets/takala/financial_phrasebank
-
-- **SemEval-2017 Task 5 (FiQA)**
-  https://github.com/tocab/SemEval2017Task5
 
 - **Financial News Multisource (for RAG)**
   https://huggingface.co/datasets/Brianferrell787/financial-news-multisource
@@ -71,7 +45,6 @@ We compare:
 
 Metrics:
 - Accuracy
-- Precision / Recall
 - Macro F1-score
 
 ---
