@@ -16,15 +16,6 @@ This repository contains the code, data processing scripts, and experiments for 
 
 ---
 
-## 5-Hop Reasoning Framework
-
-<img width="643" height="738" alt="Screenshot 2026-02-14 at 17 50 05" src="https://github.com/user-attachments/assets/21016496-0282-4761-abc2-cb43e2838dbe" />
-
-
-An optional **RAG layer** augments short headlines with relevant contextual information.
-
----
-
 ## Datasets
 
 - **Forex Financial News Headline Dataset**
@@ -59,11 +50,6 @@ Metrics:
 
 ## References
 
-- Fei et al., 2023 – Reasoning Implicit Sentiment with Chain-of-Thought Prompting
-  https://arxiv.org/abs/2305.11255
-
-- Fatouros et al., 2023 – Transforming Sentiment Analysis in the Financial Domain with ChatGPT
-  https://arxiv.org/abs/2308.07935
-
-- Kangtong et al., 2024 – Fine-Tuning Gemma-7B for Financial News Sentiment
-  https://arxiv.org/abs/2406.13626
+- [1] Y. Hao, J. Wang, W. Hong, and D. Zhang, "Reasoning Implicit Sentiment with Chain-of-Thought Prompting," arXiv preprint arXiv:2305.11255, 2023. [Online]. Available: https://arxiv.org/abs/2305.11255
+- [2] G. Fatouros et al., "Transforming Sentiment Analysis in the Financial Domain with ChatGPT," arXiv preprint arXiv:2308.07935, 2023. [Online]. Available: https://arxiv.org/abs/2308.07935
+- [3] B. Ferrell, "Financial News Multisource Dataset," HuggingFace Datasets, 2024. [Online]. Available: https://huggingface.co/datasets/Brianferrell787/financial-news-multisource
