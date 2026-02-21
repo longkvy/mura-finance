@@ -142,9 +142,10 @@ class FlanT5Backend(BaseLLMBackend):
     """
     Run Flan-T5 (e.g. google/flan-t5-xxl) via Hugging Face Transformers.
 
-    Model is loaded lazily on first generate(). Requires:
-        pip install transformers torch
-    Optional for GPU: pip install accelerate
+    Uses AutoModelForSeq2SeqLM + AutoTokenizer (no pipeline task registry),
+    so it works across transformers versions including those where
+    "text2text-generation" is not a registered task. Model loads lazily
+    on first generate(). Requires: pip install transformers torch
     """
 
     DEFAULT_MODEL = "google/flan-t5-xxl"
@@ -162,15 +163,16 @@ class FlanT5Backend(BaseLLMBackend):
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.top_p = top_p
-        self._pipe = None
+        self._model = None
+        self._tokenizer = None
         self.total_calls = 0
 
     def _load_model(self) -> None:
-        if self._pipe is not None:
+        if self._model is not None:
             return
         try:
             import torch
-            from transformers import pipeline
+            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
         except ImportError as e:
             raise ImportError(
                 "Flan-T5 backend requires: pip install transformers torch. "
@@ -179,13 +181,16 @@ class FlanT5Backend(BaseLLMBackend):
         device = self._device
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
-        # text2text-generation pipeline for seq2seq (T5)
-        self._pipe = pipeline(
-            "text2text-generation",
-            model=self.model_id,
-            device=0 if device == "cuda" else -1,
-            model_kwargs={"torch_dtype": torch.float16} if device == "cuda" else {},
+        kwargs = {}
+        if device == "cuda":
+            kwargs["torch_dtype"] = torch.float16
+        self._tokenizer = AutoTokenizer.from_pretrained(self.model_id)
+        self._model = AutoModelForSeq2SeqLM.from_pretrained(
+            self.model_id, **kwargs
         )
+        self._model = self._model.to(device)
+        self._model.eval()
+        self._device_str = device
 
     def generate(
         self, prompt: str, system_prompt: Optional[str] = None, **kwargs: Any
@@ -199,26 +204,29 @@ class FlanT5Backend(BaseLLMBackend):
         top_p = kwargs.get("top_p", self.top_p)
         do_sample = temperature > 0
 
-        pipe_kwargs: Dict[str, Any] = {
+        inputs = self._tokenizer(
+            prompt, return_tensors="pt", truncation=True, max_length=512
+        )
+        inputs = {k: v.to(self._model.device) for k, v in inputs.items()}
+
+        gen_kwargs: Dict[str, Any] = {
             "max_new_tokens": max_tokens,
             "do_sample": do_sample,
             "num_return_sequences": 1,
         }
         if do_sample:
-            pipe_kwargs["temperature"] = temperature
-            pipe_kwargs["top_p"] = top_p
+            gen_kwargs["temperature"] = temperature
+            gen_kwargs["top_p"] = top_p
 
-        out = self._pipe(prompt, **pipe_kwargs)
+        import torch
+        with torch.no_grad():
+            out = self._model.generate(**inputs, **gen_kwargs)
+
         self.total_calls += 1
-        if out and isinstance(out, list) and len(out) > 0:
-            first = out[0]
-            text = (
-                first.get("generated_text", "")
-                if isinstance(first, dict)
-                else str(first)
-            )
-            return (text or "").strip()
-        return ""
+        decoded = self._tokenizer.decode(
+            out[0], skip_special_tokens=True
+        ).strip()
+        return decoded
 
     def get_usage_stats(self) -> Dict[str, int]:
         return {
