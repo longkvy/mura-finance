@@ -185,9 +185,7 @@ class FlanT5Backend(BaseLLMBackend):
         if device == "cuda":
             kwargs["torch_dtype"] = torch.float16
         self._tokenizer = AutoTokenizer.from_pretrained(self.model_id)
-        self._model = AutoModelForSeq2SeqLM.from_pretrained(
-            self.model_id, **kwargs
-        )
+        self._model = AutoModelForSeq2SeqLM.from_pretrained(self.model_id, **kwargs)
         self._model = self._model.to(device)
         self._model.eval()
         self._device_str = device
@@ -219,13 +217,12 @@ class FlanT5Backend(BaseLLMBackend):
             gen_kwargs["top_p"] = top_p
 
         import torch
+
         with torch.no_grad():
             out = self._model.generate(**inputs, **gen_kwargs)
 
         self.total_calls += 1
-        decoded = self._tokenizer.decode(
-            out[0], skip_special_tokens=True
-        ).strip()
+        decoded = self._tokenizer.decode(out[0], skip_special_tokens=True).strip()
         return decoded
 
     def get_usage_stats(self) -> Dict[str, int]:

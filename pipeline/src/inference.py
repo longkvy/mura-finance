@@ -27,13 +27,14 @@ so pipelines.py / prompts.py / evaluation.py are completely unchanged.
 from src.config import MAX_NEW_TOKENS_DEFAULT
 
 # ── shared state ──────────────────────────────────────────────────────────────
-_backend: str = "hf"          # "hf" | "openai" | "gemini"
-_pipe = None                   # HuggingFace pipeline object
-_model_name: str = ""          # model string for API backends
-_api_key: str = ""             # API key for API backends
+_backend: str = "hf"  # "hf" | "openai" | "gemini"
+_pipe = None  # HuggingFace pipeline object
+_model_name: str = ""  # model string for API backends
+_api_key: str = ""  # API key for API backends
 
 
 # ── setup helpers ─────────────────────────────────────────────────────────────
+
 
 def set_pipeline(pipe) -> None:
     """Inject the HuggingFace pipeline (keeps original behaviour)."""
@@ -56,14 +57,20 @@ def set_backend(backend: str, model: str = "", api_key: str = "") -> None:
     _backend = backend
     _model_name = model
     _api_key = api_key
-    print(f"[inference] Backend set to '{backend}'" + (f"  model={model}" if model else ""))
+    print(
+        f"[inference] Backend set to '{backend}'"
+        + (f"  model={model}" if model else "")
+    )
 
 
 # ── provider implementations ──────────────────────────────────────────────────
 
+
 def _generate_hf(prompt: str, max_new_tokens: int) -> str:
     if _pipe is None:
-        raise RuntimeError("HF pipeline not set. Call inference.set_pipeline(pipe) first.")
+        raise RuntimeError(
+            "HF pipeline not set. Call inference.set_pipeline(pipe) first."
+        )
     output = _pipe(
         prompt,
         max_new_tokens=max_new_tokens,
@@ -114,6 +121,7 @@ def _generate_gemini(prompt: str, max_new_tokens: int) -> str:
 
 
 # ── public API ────────────────────────────────────────────────────────────────
+
 
 def generate_text(prompt: str, max_new_tokens: int = MAX_NEW_TOKENS_DEFAULT) -> str:
     """

@@ -1,1 +1,0 @@
-{"entities": ["EUR","USD"], "primary_entity": "EUR", "confidence": "high", "reasoning": "one phrase"}

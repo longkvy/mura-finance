@@ -1,7 +1,7 @@
 """
-5-Hop Reasoning Pipeline for MURA-Finance.
+4-Hop Reasoning Pipeline for MURA-Finance.
 
-Inspired by THOR (Three-hop Reasoning) framework, adapted to finance.
+FX Insight → Base/Quote sentiment → Final classification. Plain-text prompts (no JSON).
 """
 
 from .orchestrator import ReasoningPipeline

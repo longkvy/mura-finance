@@ -12,7 +12,6 @@ with a pipeline before calling these functions.
 """
 
 import re
-from typing import Optional
 
 from src.config import MAX_NEW_TOKENS_SHORT, MAX_NEW_TOKENS_HOP1
 from src.inference import generate_text
@@ -38,6 +37,7 @@ def _safe_label(raw: str, fallback: str = "Neutral") -> str:
 # Strategy 1 – Single Prompt
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def single_prompt_pipeline(title: str, ticker: str) -> dict:
     """
     Zero-shot single-step classification.
@@ -54,6 +54,7 @@ def single_prompt_pipeline(title: str, ticker: str) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # Strategy 2 – Multi-hop (no context)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def multihop_pipeline(title: str, ticker: str) -> dict:
     """
@@ -72,10 +73,24 @@ def multihop_pipeline(title: str, ticker: str) -> dict:
     base = ticker[:3]
     quote = ticker[3:]
 
-    hop1 = generate_text(hop1_fx_insight_prompt(title, ticker), MAX_NEW_TOKENS_HOP1).strip()
-    hop2 = _safe_label(generate_text(hop2_base_currency_prompt(title, ticker, base, hop1), MAX_NEW_TOKENS_SHORT))
-    hop3 = _safe_label(generate_text(hop3_quote_currency_prompt(title, ticker, quote), MAX_NEW_TOKENS_SHORT))
-    final = _safe_label(generate_text(hop4_final_classification_prompt(ticker, hop2, hop3), MAX_NEW_TOKENS_SHORT))
+    hop1 = generate_text(
+        hop1_fx_insight_prompt(title, ticker), MAX_NEW_TOKENS_HOP1
+    ).strip()
+    hop2 = _safe_label(
+        generate_text(
+            hop2_base_currency_prompt(title, ticker, base, hop1), MAX_NEW_TOKENS_SHORT
+        )
+    )
+    hop3 = _safe_label(
+        generate_text(
+            hop3_quote_currency_prompt(title, ticker, quote), MAX_NEW_TOKENS_SHORT
+        )
+    )
+    final = _safe_label(
+        generate_text(
+            hop4_final_classification_prompt(ticker, hop2, hop3), MAX_NEW_TOKENS_SHORT
+        )
+    )
 
     return {"hop1": hop1, "hop2_bc": hop2, "hop3_qc": hop3, "final": final}
 
@@ -83,6 +98,7 @@ def multihop_pipeline(title: str, ticker: str) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # Strategy 3 – Hybrid (direct + indirect) with optional RAG context
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _run_indirect_hops(
     title: str,
@@ -97,19 +113,35 @@ def _run_indirect_hops(
     quote = ticker[3:]
 
     # Truncate contexts to keep the prompt within model limits
-    extra = "\n".join(filter(None, [
-        in_context[:150]
-    ]))
+    extra = "\n".join(filter(None, [in_context[:150]]))
 
-    hop1 = generate_text(hop1_fx_insight_prompt(title, ticker), MAX_NEW_TOKENS_HOP1).strip()
-    hop2 = _safe_label(generate_text(
-        hop2_base_currency_prompt(title, ticker, base, hop1, extra_context=extra),
-        MAX_NEW_TOKENS_SHORT,
-    ))
-    hop3 = _safe_label(generate_text(hop3_quote_currency_prompt(title, ticker, quote), MAX_NEW_TOKENS_SHORT))
-    final = _safe_label(generate_text(hop4_final_classification_prompt(ticker, hop2, hop3), MAX_NEW_TOKENS_SHORT))
+    hop1 = generate_text(
+        hop1_fx_insight_prompt(title, ticker), MAX_NEW_TOKENS_HOP1
+    ).strip()
+    hop2 = _safe_label(
+        generate_text(
+            hop2_base_currency_prompt(title, ticker, base, hop1, extra_context=extra),
+            MAX_NEW_TOKENS_SHORT,
+        )
+    )
+    hop3 = _safe_label(
+        generate_text(
+            hop3_quote_currency_prompt(title, ticker, quote), MAX_NEW_TOKENS_SHORT
+        )
+    )
+    final = _safe_label(
+        generate_text(
+            hop4_final_classification_prompt(ticker, hop2, hop3), MAX_NEW_TOKENS_SHORT
+        )
+    )
 
-    return {"mode": "indirect", "hop1": hop1, "hop2_bc": hop2, "hop3_qc": hop3, "final": final}
+    return {
+        "mode": "indirect",
+        "hop1": hop1,
+        "hop2_bc": hop2,
+        "hop3_qc": hop3,
+        "final": final,
+    }
 
 
 def hybrid_rag_pipeline(
@@ -139,8 +171,18 @@ def hybrid_rag_pipeline(
     dict with keys: mode, hop1, hop2_bc, hop3_qc, final
     """
     if re.search(rf"\b{ticker}\b", title):
-        raw = generate_text(direct_few_shot_prompt(title, ticker), MAX_NEW_TOKENS_SHORT).strip()
+        raw = generate_text(
+            direct_few_shot_prompt(title, ticker), MAX_NEW_TOKENS_SHORT
+        ).strip()
         prediction = _safe_label(raw)
-        return {"mode": "direct", "hop1": None, "hop2_bc": None, "hop3_qc": None, "final": prediction}
+        return {
+            "mode": "direct",
+            "hop1": None,
+            "hop2_bc": None,
+            "hop3_qc": None,
+            "final": prediction,
+        }
 
-    return _run_indirect_hops(title, ticker, in_context, ex_context_1, ex_context_2, ex_context_3)
+    return _run_indirect_hops(
+        title, ticker, in_context, ex_context_1, ex_context_2, ex_context_3
+    )
