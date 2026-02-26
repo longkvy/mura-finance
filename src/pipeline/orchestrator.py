@@ -19,6 +19,13 @@ from .hops import (
     parse_sentiment_token,
 )
 
+# Match per-hop max_new_tokens used in `pipeline/src/pipelines.py`
+try:  # pragma: no cover - optional dependency on external package layout
+    from pipeline.src.config import MAX_NEW_TOKENS_SHORT, MAX_NEW_TOKENS_HOP1
+except Exception:  # Fallback defaults if pipeline package is unavailable
+    MAX_NEW_TOKENS_SHORT = 16
+    MAX_NEW_TOKENS_HOP1 = 40
+
 
 def _simple_prompt(title: str, ticker: str) -> str:
     """Zero-shot single-step classification prompt (same as pipeline/src/prompts.py prompt_only)."""
@@ -92,7 +99,11 @@ class ReasoningPipeline:
         if self.mode == "single":
             prompt = _simple_prompt(text, ticker or "FX")
             try:
-                response = self.llm_client.generate(prompt, **kwargs)
+                # Single-prompt generation mirrors `single_prompt_pipeline`:
+                # short max tokens and strict first-token label extraction.
+                gen_kwargs = dict(kwargs)
+                gen_kwargs.setdefault("max_tokens", MAX_NEW_TOKENS_SHORT)
+                response = self.llm_client.generate(prompt, **gen_kwargs)
                 sentiment = parse_sentiment_token(response)
                 context.sentiment = sentiment
                 context.add_hop_result(
@@ -104,9 +115,17 @@ class ReasoningPipeline:
                 )
             return context
 
+        # 4-hop mode: align generation behaviour with `multihop_pipeline`:
+        # - Hop 1 (FX insight): MAX_NEW_TOKENS_HOP1
+        # - Hops 2–4: MAX_NEW_TOKENS_SHORT
         for hop in self.hops:
             try:
-                context = hop.execute(context, self.llm_client, **kwargs)
+                hop_kwargs = dict(kwargs)
+                if isinstance(hop, FXInsightHop):
+                    hop_kwargs.setdefault("max_tokens", MAX_NEW_TOKENS_HOP1)
+                else:
+                    hop_kwargs.setdefault("max_tokens", MAX_NEW_TOKENS_SHORT)
+                context = hop.execute(context, self.llm_client, **hop_kwargs)
             except Exception as e:
                 context.add_hop_result(
                     hop.name, {"error": str(e)}, raw_response=f"Error: {str(e)}"

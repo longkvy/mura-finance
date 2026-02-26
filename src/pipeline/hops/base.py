@@ -15,15 +15,22 @@ from ..context import ReasoningContext
 def parse_sentiment_token(response: str) -> str:
     """
     Extract a single Positive/Negative/Neutral token from plain text (no JSON).
-    Returns the first matching word (case-insensitive); default "Neutral".
+
+    Matches the behaviour of `pipeline/src/pipelines._safe_label`:
+    - Look only at the **first token** of the response.
+    - If it is exactly one of Positive/Negative/Neutral (case-insensitive),
+      return that label (capitalized).
+    - Otherwise, fall back to "Neutral".
     """
     if not response or not isinstance(response, str):
         return "Neutral"
-    s = response.strip().lower()
-    for token in ("positive", "negative", "neutral"):
-        if token in s:
-            # return capitalized
-            return token.capitalize()
+    raw = response.strip()
+    if not raw:
+        return "Neutral"
+    first = raw.split()[0]
+    token = first.capitalize()
+    if token in {"Positive", "Negative", "Neutral"}:
+        return token
     return "Neutral"
 
 
