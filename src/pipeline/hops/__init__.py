@@ -1,19 +1,20 @@
 """
-Individual hop modules for 5-hop reasoning pipeline.
+Hop modules for the 4-hop reasoning pipeline (FX Insight → Base/Quote sentiment → Final).
+
+Plain-text prompts and responses; no JSON.
 """
 
-from .base import BaseHop
-from .entity_grounding import EntityGroundingHop
-from .financial_aspect import FinancialAspectHop
-from .implicit_cue import ImplicitCueHop
-from .sentiment_inference import SentimentInferenceHop
-from .market_implication import MarketImplicationHop
+from .base import BaseHop, parse_sentiment_token
+from .fx_insight import FXInsightHop
+from .base_currency_sentiment import BaseCurrencySentimentHop
+from .quote_currency_sentiment import QuoteCurrencySentimentHop
+from .final_classification import FinalClassificationHop
 
 __all__ = [
     "BaseHop",
-    "EntityGroundingHop",
-    "FinancialAspectHop",
-    "ImplicitCueHop",
-    "SentimentInferenceHop",
-    "MarketImplicationHop",
+    "parse_sentiment_token",
+    "FXInsightHop",
+    "BaseCurrencySentimentHop",
+    "QuoteCurrencySentimentHop",
+    "FinalClassificationHop",
 ]

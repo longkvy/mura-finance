@@ -1,5 +1,5 @@
 """
-Reasoning context for 5-hop pipeline.
+Reasoning context for the 4-hop pipeline (FX Insight → Base/Quote sentiment → Final).
 
 Maintains state and intermediate results as we progress through hops.
 """
@@ -15,33 +15,24 @@ class ReasoningContext:
     """
     Context object that passes information between hops.
 
-    Similar to THOR's approach of accumulating context at each step.
+    4-hop flow: fx_insight → base_sentiment → quote_sentiment → sentiment (final).
     """
 
     # Input
     text: str
-    ticker: Optional[str] = None  # May be known from metadata
+    ticker: Optional[str] = None  # e.g. EURCHF (base=ticker[:3], quote=ticker[3:])
 
-    # Hop 1: Entity Grounding
-    entities: list[str] = field(default_factory=list)
-    primary_entity: Optional[str] = None
+    # Hop 1: FX Insight (directional pressure for both currencies)
+    fx_insight: Optional[str] = None  # 1–3 bullet points, plain text
 
-    # Hop 2: Financial Aspect Identification
-    financial_aspects: list[str] = field(default_factory=list)
-    primary_aspect: Optional[str] = None
+    # Hop 2: Base currency sentiment
+    base_sentiment: Optional[str] = None  # "Positive", "Negative", "Neutral"
 
-    # Hop 3: Implicit Cue Detection
-    implicit_cues: list[str] = field(default_factory=list)
-    cue_types: list[str] = field(default_factory=list)  # e.g., "hedging", "euphemism"
+    # Hop 3: Quote currency sentiment
+    quote_sentiment: Optional[str] = None  # "Positive", "Negative", "Neutral"
 
-    # Hop 4: Implicit Sentiment Inference
+    # Hop 4: Final pair-level sentiment (combine BC/QC by rules)
     sentiment: Optional[str] = None  # "Positive", "Negative", "Neutral"
-    sentiment_score: Optional[float] = None
-    sentiment_reasoning: Optional[str] = None
-
-    # Hop 5: Market Implication Inference
-    market_implication: Optional[str] = None  # "Bullish", "Bearish", "Uncertain"
-    market_reasoning: Optional[str] = None
 
     # Metadata
     hop_results: Dict[str, Any] = field(default_factory=dict)
@@ -56,14 +47,14 @@ class ReasoningContext:
             self.raw_responses[hop_name] = raw_response
 
     def get_previous_reasoning(self) -> str:
-        """Get accumulated reasoning from previous hops for context passing."""
+        """Get accumulated reasoning from previous hops (for compatibility)."""
         parts = []
-        if self.primary_entity:
-            parts.append(f"Entity: {self.primary_entity}")
-        if self.primary_aspect:
-            parts.append(f"Aspect: {self.primary_aspect}")
-        if self.implicit_cues:
-            parts.append(f"Cues: {', '.join(self.implicit_cues)}")
+        if self.fx_insight:
+            parts.append(f"FX insight: {self.fx_insight[:200]}...")
+        if self.base_sentiment:
+            parts.append(f"Base: {self.base_sentiment}")
+        if self.quote_sentiment:
+            parts.append(f"Quote: {self.quote_sentiment}")
         if self.sentiment:
             parts.append(f"Sentiment: {self.sentiment}")
         return " | ".join(parts) if parts else ""

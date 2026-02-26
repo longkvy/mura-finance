@@ -6,44 +6,25 @@ Inspired by THOR's modular step-by-step approach.
 
 from __future__ import annotations
 
-import json
 from abc import ABC, abstractmethod
 from typing import Any
 
 from ..context import ReasoningContext
 
 
-def extract_json_from_response(response: str) -> dict | None:
+def parse_sentiment_token(response: str) -> str:
     """
-    Extract a JSON object from an LLM response string.
-
-    Tries json.loads(response) first, then looks for {...} with
-    brace-matching to support nested objects. Returns None on failure.
-
-    Used by all hops to avoid duplicating JSON extraction logic.
+    Extract a single Positive/Negative/Neutral token from plain text (no JSON).
+    Returns the first matching word (case-insensitive); default "Neutral".
     """
     if not response or not isinstance(response, str):
-        return None
-    s = response.strip()
-    try:
-        return json.loads(s)
-    except json.JSONDecodeError:
-        pass
-    start = s.find("{")
-    if start == -1:
-        return None
-    depth = 0
-    for i, c in enumerate(s[start:], start):
-        if c == "{":
-            depth += 1
-        elif c == "}":
-            depth -= 1
-            if depth == 0:
-                try:
-                    return json.loads(s[start : i + 1])
-                except json.JSONDecodeError:
-                    return None
-    return None
+        return "Neutral"
+    s = response.strip().lower()
+    for token in ("positive", "negative", "neutral"):
+        if token in s:
+            # return capitalized
+            return token.capitalize()
+    return "Neutral"
 
 
 class BaseHop(ABC):

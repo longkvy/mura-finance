@@ -1,7 +1,8 @@
 """
-Pipeline orchestrator for 5-hop reasoning.
+Pipeline orchestrator: 4-hop reasoning or single-prompt (zero-shot) mode.
 
-Chains hops together with context passing, similar to THOR's approach.
+- mode="4hop": FX Insight → Base/Quote sentiment → Final classification.
+- mode="single": One LLM call with a simple classification prompt (no hops).
 """
 
 from __future__ import annotations
@@ -11,22 +12,29 @@ from typing import Any, Dict, Optional
 from .context import ReasoningContext
 from .llm_client import LLMClient
 from .hops import (
-    EntityGroundingHop,
-    FinancialAspectHop,
-    ImplicitCueHop,
-    SentimentInferenceHop,
-    MarketImplicationHop,
+    FXInsightHop,
+    BaseCurrencySentimentHop,
+    QuoteCurrencySentimentHop,
+    FinalClassificationHop,
+    parse_sentiment_token,
 )
+
+
+def _simple_prompt(title: str, ticker: str) -> str:
+    """Zero-shot single-step classification prompt (same as pipeline/src/prompts.py prompt_only)."""
+    return f"""
+Act as an expert at forex trading.
+Classify the sentiment for ***{ticker}*** based only on the headline '{title}'
+Answer in one token: Positive, Negative, or Neutral
+""".strip()
 
 
 class ReasoningPipeline:
     """
-    Main orchestrator for 5-hop reasoning pipeline.
+    Reasoning pipeline in two modes:
 
-    Inspired by THOR's step-by-step CoT approach:
-    - Chains hops sequentially
-    - Passes context between hops
-    - Accumulates reasoning at each step
+    - mode="4hop" (default): FX Insight → Base sentiment → Quote sentiment → Final classification.
+    - mode="single": One call with a simple prompt; returns context.sentiment only.
     """
 
     def __init__(
@@ -34,6 +42,7 @@ class ReasoningPipeline:
         llm_client: Optional[LLMClient] = None,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        mode: str = "4hop",
     ):
         """
         Initialize reasoning pipeline.
@@ -42,48 +51,66 @@ class ReasoningPipeline:
             llm_client: Optional pre-configured LLM client
             api_key: OpenAI API key (if llm_client not provided)
             model: Model name (or set OPENAI_MODEL env var; if llm_client not provided)
+            mode: "4hop" for full 4-hop chain, "single" for one-shot simple prompt only
         """
         if llm_client is None:
             self.llm_client = LLMClient(api_key=api_key, model=model)
         else:
             self.llm_client = llm_client
 
-        # Initialize hops
-        self.hops = [
-            EntityGroundingHop(),
-            FinancialAspectHop(),
-            ImplicitCueHop(),
-            SentimentInferenceHop(),
-            MarketImplicationHop(),
-        ]
+        self.mode = mode.lower()
+        if self.mode not in ("4hop", "single"):
+            raise ValueError(f'mode must be "4hop" or "single"; got {mode!r}')
+
+        self.hops = (
+            [
+                FXInsightHop(),
+                BaseCurrencySentimentHop(),
+                QuoteCurrencySentimentHop(),
+                FinalClassificationHop(),
+            ]
+            if self.mode == "4hop"
+            else []
+        )
 
     def run(
         self, text: str, ticker: Optional[str] = None, **kwargs
     ) -> ReasoningContext:
         """
-        Run the complete 5-hop reasoning pipeline.
+        Run the pipeline (4-hop or single-prompt depending on mode).
 
         Args:
             text: Financial news headline or text to analyze
-            ticker: Optional ticker/entity (if known from metadata)
+            ticker: FX pair (e.g. EURCHF); for single mode used in the prompt
             **kwargs: Additional parameters to pass to LLM calls
 
         Returns:
-            ReasoningContext with all hop results
+            ReasoningContext; sentiment always set; fx_insight/base_sentiment/quote_sentiment only in 4hop mode
         """
-        # Initialize context
         context = ReasoningContext(text=text, ticker=ticker)
 
-        # Execute each hop sequentially
+        if self.mode == "single":
+            prompt = _simple_prompt(text, ticker or "FX")
+            try:
+                response = self.llm_client.generate(prompt, **kwargs)
+                sentiment = parse_sentiment_token(response)
+                context.sentiment = sentiment
+                context.add_hop_result(
+                    "simple_prompt", {"sentiment": sentiment}, raw_response=response
+                )
+            except Exception as e:
+                context.add_hop_result(
+                    "simple_prompt", {"error": str(e)}, raw_response=f"Error: {str(e)}"
+                )
+            return context
+
         for hop in self.hops:
             try:
                 context = hop.execute(context, self.llm_client, **kwargs)
             except Exception as e:
-                # Log error but continue with next hop
                 context.add_hop_result(
                     hop.name, {"error": str(e)}, raw_response=f"Error: {str(e)}"
                 )
-
         return context
 
     def get_final_result(self, context: ReasoningContext) -> Dict[str, Any]:
@@ -94,29 +121,15 @@ class ReasoningPipeline:
             context: Completed reasoning context
 
         Returns:
-            Dictionary with final predictions and reasoning
+            Dictionary with final predictions and 4-hop outputs
         """
         return {
             "text": context.text,
-            "entity": context.primary_entity,
-            "financial_aspect": context.primary_aspect,
-            "implicit_cues": context.implicit_cues,
+            "ticker": context.ticker,
+            "fx_insight": context.fx_insight,
+            "base_sentiment": context.base_sentiment,
+            "quote_sentiment": context.quote_sentiment,
             "sentiment": context.sentiment,
-            "sentiment_score": context.sentiment_score,
-            "market_implication": context.market_implication,
-            "reasoning": {
-                "entity_reasoning": context.hop_results.get("entity_grounding", {}).get(
-                    "reasoning"
-                ),
-                "aspect_reasoning": context.hop_results.get("financial_aspect", {}).get(
-                    "reasoning"
-                ),
-                "cue_reasoning": context.hop_results.get("implicit_cue", {}).get(
-                    "reasoning"
-                ),
-                "sentiment_reasoning": context.sentiment_reasoning,
-                "market_reasoning": context.market_reasoning,
-            },
             "all_hop_results": context.hop_results,
         }
 
