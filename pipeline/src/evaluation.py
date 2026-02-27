@@ -54,22 +54,13 @@ def evaluate(
     print(f"  Accuracy  : {acc:.4f}")
     print(f"  Macro F1  : {macro_f1:.4f}")
     print()
-    print(
-        classification_report(y_true, y_pred, labels=LABELS, digits=4, zero_division=0)
-    )
+    print(classification_report(y_true, y_pred, labels=LABELS, digits=4, zero_division=0))
 
     # Confusion matrix
     cm = confusion_matrix(y_true, y_pred, labels=LABELS)
     fig, ax = plt.subplots(figsize=(6, 4))
-    sns.heatmap(
-        cm,
-        annot=True,
-        fmt="d",
-        cmap="Blues",
-        xticklabels=LABELS,
-        yticklabels=LABELS,
-        ax=ax,
-    )
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
+                xticklabels=LABELS, yticklabels=LABELS, ax=ax)
     ax.set_xlabel("Predicted")
     ax.set_ylabel("True")
     ax.set_title(title)

@@ -12,7 +12,6 @@ Keeping prompts here makes A/B testing and refinement straightforward.
 # Strategy 1 – Single Prompt
 # ─────────────────────────────────────────────────────────────────────────────
 
-
 def prompt_only(title: str, ticker: str) -> str:
     """Zero-shot single-step classification prompt."""
     return f"""
@@ -25,7 +24,6 @@ Answer in one token: Positive, Negative, or Neutral
 # ─────────────────────────────────────────────────────────────────────────────
 # Shared multi-hop building blocks
 # ─────────────────────────────────────────────────────────────────────────────
-
 
 def direct_few_shot_prompt(title: str, ticker: str) -> str:
     """Few-shot prompt for headlines that directly mention the ticker."""
@@ -95,11 +93,7 @@ def hop2_base_currency_prompt(
     title: str, ticker: str, base: str, hop1: str, extra_context: str = ""
 ) -> str:
     """Hop 2 – Classify sentiment for the base currency."""
-    context_block = (
-        f"\nContext (optional, only choose the most relevant):\n{extra_context}"
-        if extra_context
-        else ""
-    )
+    context_block = f"\nContext (optional, only choose the most relevant):\n{extra_context}" if extra_context else ""
     return f"""
 Task: Financial Sentiment Analysis.
 
