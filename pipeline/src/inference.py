@@ -26,15 +26,14 @@ so pipelines.py / prompts.py / evaluation.py are completely unchanged.
 
 from src.config import MAX_NEW_TOKENS_DEFAULT
 
-# ── shared state ──────────────────────────────────────────────────────────────
-_backend: str = "hf"  # "hf" | "openai" | "gemini"
-_pipe = None  # HuggingFace pipeline object
-_model_name: str = ""  # model string for API backends
-_api_key: str = ""  # API key for API backends
+# shared state
+_backend: str = "hf"          # "hf" | "openai" | "gemini"
+_pipe = None                   # HuggingFace pipeline object
+_model_name: str = ""          # model string for API backends
+_api_key: str = ""             # API key for API backends
 
 
-# ── setup helpers ─────────────────────────────────────────────────────────────
-
+# setup helpers
 
 def set_pipeline(pipe) -> None:
     """Inject the HuggingFace pipeline (keeps original behaviour)."""
@@ -57,20 +56,14 @@ def set_backend(backend: str, model: str = "", api_key: str = "") -> None:
     _backend = backend
     _model_name = model
     _api_key = api_key
-    print(
-        f"[inference] Backend set to '{backend}'"
-        + (f"  model={model}" if model else "")
-    )
+    print(f"[inference] Backend set to '{backend}'" + (f"  model={model}" if model else ""))
 
 
-# ── provider implementations ──────────────────────────────────────────────────
-
+# provider implementations
 
 def _generate_hf(prompt: str, max_new_tokens: int) -> str:
     if _pipe is None:
-        raise RuntimeError(
-            "HF pipeline not set. Call inference.set_pipeline(pipe) first."
-        )
+        raise RuntimeError("HF pipeline not set. Call inference.set_pipeline(pipe) first.")
     output = _pipe(
         prompt,
         max_new_tokens=max_new_tokens,
@@ -105,23 +98,30 @@ def _generate_gemini(prompt: str, max_new_tokens: int) -> str:
     except ImportError:
         raise ImportError("Run:  pip install google-generativeai")
 
-    # Gemini needs more room than FLAN-T5 — enforce a minimum
+    genai.configure(api_key=_api_key)
+
+    # Gemini is more verbose than FLAN-T5 — enforce a minimum to avoid MAX_TOKENS errors
     max_new_tokens = max(max_new_tokens, 100)
 
-    genai.configure(api_key=_api_key)
     model = genai.GenerativeModel(
-        model_name=_model_name or "gemini-2.5-flash",
+        model_name=_model_name or "gemini-1.5-flash",
         generation_config=genai.types.GenerationConfig(
             max_output_tokens=max_new_tokens,
             temperature=0.0,
         ),
     )
     response = model.generate_content(prompt)
-    return response.text.strip()
+
+    try:
+        return response.text.strip()
+    except ValueError:
+        candidates = response.candidates
+        if candidates and candidates[0].content.parts:
+            return candidates[0].content.parts[0].text.strip()
+        return ""
 
 
-# ── public API ────────────────────────────────────────────────────────────────
-
+# public API
 
 def generate_text(prompt: str, max_new_tokens: int = MAX_NEW_TOKENS_DEFAULT) -> str:
     """
