@@ -26,18 +26,30 @@ from src.prompts import (
 )
 
 VALID_LABELS = {"Positive", "Negative", "Neutral"}
+# Synonyms used in prompts (Hawkish/Bullish, Dovish/Bearish) – map to canonical labels
+POSITIVE_SYNONYMS = re.compile(r"\b(positive|bullish|hawkish)\b", re.IGNORECASE)
+NEGATIVE_SYNONYMS = re.compile(r"\b(negative|bearish|dovish)\b", re.IGNORECASE)
 
 
 def _safe_label(raw: str, fallback: str = "Neutral") -> str:
+    if not raw or not raw.strip():
+        return fallback
+    text = raw.strip()
     # First try the first token (fast path for FLAN-T5)
-    first = raw.strip().split()[0] if raw.strip() else ""
+    first = text.split()[0]
     if first in VALID_LABELS:
         return first
 
-    # Search anywhere in the text (for verbose models like Qwen, Gemma)
-    match = re.search(r"\b(Positive|Negative|Neutral)\b", raw, re.IGNORECASE)
+    # Search for canonical labels (for verbose models like Qwen, Gemma)
+    match = re.search(r"\b(Positive|Negative|Neutral)\b", text, re.IGNORECASE)
     if match:
         return match.group(1).capitalize()
+
+    # Prompts use Hawkish/Bullish and Dovish/Bearish – accept those too
+    if POSITIVE_SYNONYMS.search(text):
+        return "Positive"
+    if NEGATIVE_SYNONYMS.search(text):
+        return "Negative"
 
     return fallback
 
