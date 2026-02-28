@@ -104,12 +104,8 @@ Directional signals: {hop1}{context_block}
 Base Currency: {base}
 
 Is the headline Hawkish/Bullish, Dovish/Bearish, or Neutral for {base}?
-If unclear, just return Neutral.
 
-Answer ONLY:
-Positive
-Negative
-Neutral
+Reply with exactly one word: Positive, Negative, or Neutral.
 """.strip()
 
 
@@ -124,12 +120,8 @@ Input Headline: {title}
 Quote Currency: {quote}
 
 Is the headline Hawkish/Bullish, Dovish/Bearish, or Neutral for {quote}?
-If unclear, just return Neutral.
 
-Answer ONLY:
-Positive
-Negative
-Neutral
+Reply with exactly one word: Positive, Negative, or Neutral.
 """.strip()
 
 
@@ -143,12 +135,7 @@ Ticker: {ticker}
 BC Sentiment: {hop2}
 QC Sentiment: {hop3}
 
-If BC Positive and QC not Positive → Positive
-If BC Negative and QC not Negative → Negative
-If both same or both Neutral → Neutral
+Rules: If BC Positive and QC not Positive → Positive. If BC Negative and QC not Negative → Negative. If both same or both Neutral → Neutral.
 
-Return ONLY one token:
-Positive
-Negative
-Neutral
+Reply with exactly one word: Positive, Negative, or Neutral.
 """.strip()
