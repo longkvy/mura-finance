@@ -40,6 +40,6 @@ EX_CONTEXT_COLS = ["external_context_1", "external_context_2", "external_context
 LABELS = ["Positive", "Neutral", "Negative"]
 
 # ── Inference settings ────────────────────────────────────────────────────────
-MAX_NEW_TOKENS_DEFAULT = 64
-MAX_NEW_TOKENS_SHORT   = 8
-MAX_NEW_TOKENS_HOP1    = 40
+MAX_NEW_TOKENS_DEFAULT = 128
+MAX_NEW_TOKENS_SHORT   = 128   # was 8; Ollama/local often need more tokens to output one word
+MAX_NEW_TOKENS_HOP1    = 128
