@@ -4,6 +4,7 @@ inference.py
 Unified text-generation interface supporting multiple backends:
 
     • "hf"      – HuggingFace local pipeline (FLAN-T5-XXL, default)
+    • "ollama"  – Local Ollama server (e.g. llama3, phi3)
     • "openai"  – OpenAI Chat Completions API  (e.g. gpt-3.5-turbo)
     • "gemini"  – Google Gemini API            (e.g. gemini-2.5-flash)
 
@@ -14,23 +15,34 @@ Usage
     inference.set_pipeline(pipe)          # inject loaded HF pipeline
     inference.set_backend("hf")           # default, can be omitted
 
+# Ollama (local server; ensure ollama serve is running):
+    inference.set_backend("ollama", model="llama3")
+
 # OpenAI:
     inference.set_backend("openai", model="gpt-3.5-turbo",  api_key="sk-...")
 
 # Gemini:
     inference.set_backend("gemini", model="gemini-2.5-flash", api_key="AI...")
 
-All three expose the same generate_text(prompt, max_new_tokens) signature,
+All backends expose the same generate_text(prompt, max_new_tokens) signature,
 so pipelines.py / prompts.py / evaluation.py are completely unchanged.
 """
 
+import os
+
 from src.config import MAX_NEW_TOKENS_DEFAULT
 
+try:
+    import requests
+except ImportError:
+    requests = None  # type: ignore
+
 # shared state
-_backend: str = "hf"          # "hf" | "openai" | "gemini"
+_backend: str = "hf"          # "hf" | "ollama" | "openai" | "gemini"
 _pipe = None                   # HuggingFace pipeline object
-_model_name: str = ""          # model string for API backends
-_api_key: str = ""             # API key for API backends
+_model_name: str = ""          # model string for API / Ollama backends
+_api_key: str = ""             # API key for openai / gemini
+_ollama_host: str = ""         # Ollama server URL (default from env or localhost)
 
 
 # setup helpers
@@ -41,21 +53,28 @@ def set_pipeline(pipe) -> None:
     _pipe = pipe
 
 
-def set_backend(backend: str, model: str = "", api_key: str = "") -> None:
+def set_backend(
+    backend: str,
+    model: str = "",
+    api_key: str = "",
+    ollama_host: str = "",
+) -> None:
     """
     Choose which backend generate_text() will use.
 
     Parameters
     ----------
-    backend  : "hf" | "openai" | "gemini"
-    model    : model identifier string (required for openai / gemini)
-    api_key  : API key (required for openai / gemini)
+    backend     : "hf" | "ollama" | "openai" | "gemini"
+    model       : model identifier (required for ollama / openai / gemini)
+    api_key     : API key (required for openai / gemini)
+    ollama_host : base URL for Ollama (e.g. http://localhost:11434); optional, uses OLLAMA_HOST env if unset
     """
-    global _backend, _model_name, _api_key
-    assert backend in ("hf", "openai", "gemini"), f"Unknown backend: {backend}"
+    global _backend, _model_name, _api_key, _ollama_host
+    assert backend in ("hf", "ollama", "openai", "gemini"), f"Unknown backend: {backend}"
     _backend = backend
     _model_name = model
     _api_key = api_key
+    _ollama_host = ollama_host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
     print(f"[inference] Backend set to '{backend}'" + (f"  model={model}" if model else ""))
 
 
@@ -72,6 +91,30 @@ def _generate_hf(prompt: str, max_new_tokens: int) -> str:
         temperature=0.0,
     )
     return output[0]["generated_text"].strip()
+
+
+def _generate_ollama(prompt: str, max_new_tokens: int) -> str:
+    """Call local Ollama server (e.g. ollama serve). Uses /api/generate with stream=False."""
+    if requests is None:
+        raise ImportError("Ollama backend requires:  pip install requests")
+    model = _model_name or "llama3"
+    host = _ollama_host.rstrip("/")
+    url = f"{host}/api/generate"
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "num_predict": max_new_tokens,
+            "temperature": 0.0,
+        },
+    }
+    r = requests.post(url, json=payload, timeout=120)
+    r.raise_for_status()
+    data = r.json()
+    if isinstance(data, dict):
+        return (data.get("response") or "").strip()
+    return str(data).strip()
 
 
 def _generate_openai(prompt: str, max_new_tokens: int) -> str:
@@ -138,6 +181,8 @@ def generate_text(prompt: str, max_new_tokens: int = MAX_NEW_TOKENS_DEFAULT) -> 
     """
     if _backend == "hf":
         return _generate_hf(prompt, max_new_tokens)
+    elif _backend == "ollama":
+        return _generate_ollama(prompt, max_new_tokens)
     elif _backend == "openai":
         return _generate_openai(prompt, max_new_tokens)
     elif _backend == "gemini":
