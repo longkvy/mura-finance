@@ -1,4 +1,4 @@
-# FX Sentiment Analysis — Multi-hop Reasoning for FX Headlines
+# MURA-Finance: Adaptive Multi-Hop Reasoning with Augmented Context for Implicit Financial Sentiment Analysis
 
 **Master Capstone Project · UA MSIS**
 
