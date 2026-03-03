@@ -1,55 +1,202 @@
-# MURA-Finance
-**Multi-Hop Reasoning with Augmented Context for Implicit Financial Sentiment Analysis**
+# FX Sentiment Analysis — Multi-hop Reasoning for FX Headlines
 
-MURA-Finance is a research project that adapts **multi-hop Chain-of-Thought (CoT) reasoning** to the financial domain, where sentiment is often **implicit, hedged, and context-dependent**.
-
-The primary objective of this project is to introduce a multi-hop domain-specific pipeline designed to navigate the linguistic complexities of financial markets. In addition, we incorporate Retrieval-Augmented Generation (RAG) to supply relevant contextual information, enabling more informed reasoning and translating inferred sentiment into actionable market signals.
-
-This repository contains the code, data processing scripts, and experiments for a **capstone research project**.
+**Master Capstone Project · UA MSIS**
 
 ---
 
-## Core Pipeline
+## Project Overview
 
-<img width="1519" height="801" alt="Screenshot 2026-02-14 at 17 48 32" src="https://github.com/user-attachments/assets/2367b453-2191-41f6-9500-6b50c0273a9b" />
+This project evaluates multi-hop chain-of-thought prompting strategies for classifying **FX headline sentiment** (Positive / Neutral / Negative), benchmarked across multiple LLMs against a FinBERT baseline.
 
+Three prompting strategies are implemented:
 
----
+| # | Strategy | Description |
+|---|----------|-------------|
+| 1 | **Multi-hop** | 4-hop chain-of-thought (no external context) |
+| 2 | **Hybrid** | Direct-vs-indirect routing, no context |
+| 3 | **Hybrid RAG** | Hybrid routing + distilled RAG context |
 
-## Datasets
+Each strategy is benchmarked across three models:
 
-- **Forex Financial News Headline Dataset**
-  https://arxiv.org/abs/2308.07935
-
-- **Financial News Multisource (for RAG)**
-  https://huggingface.co/datasets/Brianferrell787/financial-news-multisource
-
----
-
-## Evaluation
-
-We compare:
-- FinBERT
-- Single-shot LLM classification
-- 5-hop reasoning (no RAG)
-- 5-hop reasoning + RAG
-
-Metrics:
-- Accuracy
-- Macro F1-score
+| Model | Backend | Notes |
+|-------|---------|-------|
+| FLAN-T5-XXL | HuggingFace (local) | Dev + Test, all strategies |
+| GPT-3.5-Turbo | OpenAI API | Test only, multi-hop + hybrid + hybrid RAG |
+| Gemini Flash | Google Gemini API | Test only, multi-hop + hybrid + hybrid RAG |
 
 ---
 
-## Team
+## Folder Structure
 
-- Long Nguyen
-- Quynh Nguyen
-- Johnny
+```
+repo/
+│
+└── pipeline/
+    │
+    ├── pipeline.ipynb          ← Main notebook: FLAN-T5 full run (dev + test)
+    ├── test_api_models.ipynb   ← API model evaluation (test set only)
+    │
+    ├── src/
+    │   ├── config.py           ← All paths, column names, model settings
+    │   ├── model_loader.py     ← Loads FLAN-T5-XXL and returns a HF pipeline
+    │   ├── inference.py        ← generate_text() — unified interface for all backends
+    │   ├── prompts.py          ← All prompt templates (easily editable)
+    │   ├── pipelines.py        ← The three strategy implementations
+    │   └── evaluation.py       ← Metrics, classification report, confusion matrix
+    │
+    ├── data/
+    │   └── finance/
+    │       ├── dev.csv                        ← Development set (input)
+    │       ├── test.csv                       ← Test set (input)
+    │       ├── all_predictions.csv            ← Merged per-row predictions (all strategies, FLAN-T5)
+    │       ├── result_dev_*.csv               ← FLAN-T5 dev results per strategy
+    │       ├── result_test_*.csv              ← FLAN-T5 test results per strategy
+    │       ├── result_test_gpt35_*.csv        ← GPT-3.5 test results per strategy
+    │       ├── result_test_gemini_flash_*.csv ← Gemini Flash test results per strategy
+    │       └── comparison_all_models.csv      ← Final cross-model summary table
+    │
+    └── requirements.txt
+```
 
 ---
 
-## References
+## Quickstart
 
-- [1] Y. Hao, J. Wang, W. Hong, and D. Zhang, "Reasoning Implicit Sentiment with Chain-of-Thought Prompting," arXiv preprint arXiv:2305.11255, 2023. [Online]. Available: https://arxiv.org/abs/2305.11255
-- [2] G. Fatouros et al., "Transforming Sentiment Analysis in the Financial Domain with ChatGPT," arXiv preprint arXiv:2308.07935, 2023. [Online]. Available: https://arxiv.org/abs/2308.07935
-- [3] B. Ferrell, "Financial News Multisource Dataset," HuggingFace Datasets, 2024. [Online]. Available: https://huggingface.co/datasets/Brianferrell787/financial-news-multisource
+### FLAN-T5-XXL — Google Colab (GPU required)
+
+1. Upload the `pipeline/` folder to **Google Drive**.
+2. Open `pipeline.ipynb` in Colab (set runtime to **GPU**).
+3. Set the working directory path in **Section 0**.
+4. Run all cells top-to-bottom (`Runtime → Run all`).
+
+### API Models — OpenAI or Gemini
+
+1. Open `test_api_models.ipynb` in Colab (no GPU needed).
+2. Fill in your API keys in **Section 1**:
+
+```python
+OPENAI_API_KEY = "sk-..."
+GEMINI_API_KEY = "AI..."
+```
+
+3. Run all cells. Results are saved to `data/finance/` and a cross-model comparison table is printed at the end.
+
+> **Note:** Free-tier Gemini is limited to 15 RPM. A `time.sleep(4)` is added between rows automatically. For OpenAI, automatic retry with exponential backoff handles rate limit errors.
+
+---
+
+## Switching Backends in Code
+
+The backend is controlled by a single call to `inference.set_backend()`. All pipeline and prompt logic is unchanged.
+
+```python
+import src.inference as inference
+
+# Local FLAN-T5 (requires set_pipeline first)
+inference.set_backend("hf")
+
+# OpenAI
+inference.set_backend("openai", model="gpt-3.5-turbo", api_key="sk-...")
+
+# Gemini
+inference.set_backend("gemini", model="gemini-1.5-flash", api_key="AI...")
+```
+
+---
+
+## Reloading After Code Changes
+
+Python caches imported modules. After editing any file in `src/`, run this cell before re-running the pipeline:
+
+```python
+import importlib, src.prompts, src.inference, src.pipelines
+
+importlib.reload(src.prompts)
+importlib.reload(src.inference)
+importlib.reload(src.pipelines)
+
+src.inference.set_pipeline(pipe)  # re-inject after reload (HF only)
+
+from src.pipelines import single_prompt_pipeline, multihop_pipeline, hybrid_rag_pipeline
+print("src/ reloaded.")
+```
+
+---
+
+## Pipeline Design
+
+### Hybrid Routing
+Both the Hybrid and Hybrid RAG pipelines use a **direct vs. indirect routing** step before running any hops. If the headline explicitly mentions the ticker symbol (e.g. `EURUSD`), it is classified as **direct** and handled with a single few-shot prompt. If not, it is classified as **indirect** and goes through the full 4-hop chain.
+
+```
+Headline contains ticker? 
+    ├── YES (direct)  → few-shot single-step classification
+    └── NO (indirect) → 4-hop chain-of-thought
+```
+
+### Hybrid RAG
+The Hybrid RAG pipeline extends the indirect path by feeding truncated context directly into **Hop 2** (base currency sentiment), where external signals are most useful for disambiguating indirect headlines.
+
+```
+Hop 1 → detect FX directional pressure
+Hop 2 → base currency sentiment (+ truncated RAG context injected here)
+Hop 3 → quote currency sentiment
+Hop 4 → combine BC/QC → final prediction
+```
+
+The `text` (in-domain article body) and `external_context_1/2/3` columns are truncated and concatenated before being passed to Hop 2. If no context is available, it falls back to the non-RAG hybrid behaviour.
+
+---
+
+## Output Files
+
+| File | Description |
+|------|-------------|
+| `all_predictions.csv` | One row per headline with all strategy predictions, hop outputs, and context columns (FLAN-T5, dev set) |
+| `result_dev_*.csv` / `result_test_*.csv` | FLAN-T5 per-strategy results |
+| `result_test_gpt35_*.csv` | GPT-3.5 test results per strategy |
+| `result_test_gemini_flash_*.csv` | Gemini Flash test results per strategy |
+| `comparison_all_models.csv` | Accuracy + Macro F1 for all models × strategies, ordered FLAN-T5 → GPT-3.5 → Gemini |
+
+---
+
+## Configuration
+
+All tunable settings are in `src/config.py`:
+
+```python
+MODEL_ID   = "google/flan-t5-xxl"   # HuggingFace model (local backend)
+BATCH_SIZE = 8
+DEV_PATH   = "data/finance/dev.csv"
+TEST_PATH  = "data/finance/test.csv"
+```
+
+---
+
+## Data Format
+
+Each input CSV must contain:
+
+| Column | Description |
+|--------|-------------|
+| `title` | Headline text |
+| `ticker` | FX pair symbol (e.g. `EURUSD`) |
+| `true_sentiment` | Ground-truth label (`Positive` / `Neutral` / `Negative`) |
+| `finbert_sentiment` | FinBERT baseline prediction |
+| `text` | In-domain context (original article body) |
+| `external_context_1/2/3` | External RAG context snippets |
+
+---
+
+## Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+API backends require their respective packages:
+
+```bash
+pip install openai              # for OpenAI
+pip install google-generativeai # for Gemini
+```
