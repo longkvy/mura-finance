@@ -22,7 +22,6 @@ Each strategy is benchmarked across three models:
 |-------|---------|-------|
 | FLAN-T5-XXL | HuggingFace (local) | Dev + Test, all strategies |
 | GPT-3.5-Turbo | OpenAI API | Test only, multi-hop + hybrid + hybrid RAG |
-| Gemini Flash | Google Gemini API | Test only, multi-hop + hybrid + hybrid RAG |
 
 ---
 
@@ -52,7 +51,6 @@ repo/
     │       ├── result_dev_*.csv               ← FLAN-T5 dev results per strategy
     │       ├── result_test_*.csv              ← FLAN-T5 test results per strategy
     │       ├── result_test_gpt35_*.csv        ← GPT-3.5 test results per strategy
-    │       ├── result_test_gemini_flash_*.csv ← Gemini Flash test results per strategy
     │       └── comparison_all_models.csv      ← Final cross-model summary table
     │
     └── requirements.txt
@@ -76,31 +74,12 @@ repo/
 
 ```python
 OPENAI_API_KEY = "sk-..."
-GEMINI_API_KEY = "AI..."
 ```
 
 3. Run all cells. Results are saved to `data/finance/` and a cross-model comparison table is printed at the end.
 
 > **Note:** Free-tier Gemini is limited to 15 RPM. A `time.sleep(4)` is added between rows automatically. For OpenAI, automatic retry with exponential backoff handles rate limit errors.
-
----
-
-## Switching Backends in Code
-
-The backend is controlled by a single call to `inference.set_backend()`. All pipeline and prompt logic is unchanged.
-
-```python
-import src.inference as inference
-
-# Local FLAN-T5 (requires set_pipeline first)
-inference.set_backend("hf")
-
-# OpenAI
-inference.set_backend("openai", model="gpt-3.5-turbo", api_key="sk-...")
-
-# Gemini
-inference.set_backend("gemini", model="gemini-1.5-flash", api_key="AI...")
-```
+> 
 
 ---
 
@@ -155,7 +134,6 @@ The `text` (in-domain article body) and `external_context_1/2/3` columns are tru
 | `all_predictions.csv` | One row per headline with all strategy predictions, hop outputs, and context columns (FLAN-T5, dev set) |
 | `result_dev_*.csv` / `result_test_*.csv` | FLAN-T5 per-strategy results |
 | `result_test_gpt35_*.csv` | GPT-3.5 test results per strategy |
-| `result_test_gemini_flash_*.csv` | Gemini Flash test results per strategy |
 | `comparison_all_models.csv` | Accuracy + Macro F1 for all models × strategies, ordered FLAN-T5 → GPT-3.5 → Gemini |
 
 ---
@@ -198,5 +176,4 @@ API backends require their respective packages:
 
 ```bash
 pip install openai              # for OpenAI
-pip install google-generativeai # for Gemini
 ```
