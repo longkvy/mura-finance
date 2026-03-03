@@ -1,0 +1,6 @@
+Strategy,Dev Accuracy,Dev Macro F1,Test Accuracy,Test Macro F1
+FinBERT (baseline),0.5626,0.5599,0.5584,0.5554
+Single Prompt,0.7184,0.7117,0.71,0.6977
+Multi-hop,0.7392,0.7396,0.7641,0.7616
+Hybrid,0.76,0.7612,0.7706,0.7686
+Hybrid RAG,0.7611,0.7622,0.7684,0.7669
