@@ -1,0 +1,9 @@
+Model,Strategy,Accuracy,Macro F1
+FLAN-T5-XXL,single_prompt,0.71,0.6977
+FLAN-T5-XXL,multihop,0.7641,0.7616
+FLAN-T5-XXL,hybrid,0.7706,0.7686
+FLAN-T5-XXL,hybrid_rag,0.7684,0.7669
+GPT-3.5-Turbo,single_prompt,0.7833,0.7715
+GPT-3.5-Turbo,multihop,0.7667,0.7538
+GPT-3.5-Turbo,hybrid,0.7833,0.7814
+GPT-3.5-Turbo,hybrid_rag,0.7833,0.7814
