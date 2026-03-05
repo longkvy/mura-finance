@@ -17,12 +17,12 @@ Four prompting strategies are implemented:
 | 2 | **Hybrid** | Direct-vs-indirect routing, no context |
 | 3 | **Hybrid RAG** | Hybrid routing + distilled RAG context |
 
-Each strategy is benchmarked across two models:
+The primary model is **FLAN-T5-XXL**, evaluated across all strategies on both dev and test sets. GPT-3.5-Turbo is included as a supplementary reference to contrast architecture-specific behavior on the test set only.
 
-| Model | Backend | Notes |
-|-------|---------|-------|
-| FLAN-T5-XXL | HuggingFace (local) | Dev + Test, all strategies |
-| GPT-3.5-Turbo | OpenAI API | Test only, all strategies |
+| Model | Backend | Role |
+|-------|---------|------|
+| FLAN-T5-XXL | HuggingFace (local) | Primary — dev + test, all strategies |
+| GPT-3.5-Turbo | OpenAI API | Supplementary — test only, all strategies |
 
 ---
 
